@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sun Jun  7 21:46:43 2020
 
-@author: dom
 """
 from multiprocessing import freeze_support
 from pathlib import Path
