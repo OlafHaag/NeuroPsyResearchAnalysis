@@ -7,7 +7,7 @@ import sys
 import click
 from IPython.core import ultratb
 
-import neuropsy_modelcomparison
+import neuropsymodelcomparison as npmc
 
 # fallback to debugger on error
 sys.excepthook = ultratb.FormattedTB(mode='Verbose', color_scheme='Linux', call_pdb=1)
@@ -21,14 +21,14 @@ _logger = logging.getLogger(__name__)
 @click.option('--quiet', 'log_level', flag_value=logging.WARNING, default=True)
 @click.option('-v', '--verbose', 'log_level', flag_value=logging.INFO)
 @click.option('-vv', '--very-verbose', 'log_level', flag_value=logging.DEBUG)
-@click.version_option(neuropsy_modelcomparison.__version__)
+@click.version_option(npmc.__version__)
 def main(cfg_path: Path, log_level: int):
     logging.basicConfig(stream=sys.stdout,
                         level=log_level,
                         datefmt='%Y-%m-%d %H:%M',
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    # YOUR CODE GOES HERE! Keep the main functionality in src/neuropsy_modelcomparison
-    # est = neuropsy_modelcomparison.models.Estimator()
+    # YOUR CODE GOES HERE! Keep the main functionality in src/neuropsymodelcomparison
+    # est = npmc.models.Estimator()
 
 
 if __name__ == '__main__':

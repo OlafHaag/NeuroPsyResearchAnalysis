@@ -1,11 +1,14 @@
-# NeuroPsyModelComparison
+# NeuroPsy Model Comparison
 
-Add a short description here!
+A bayesian model comparison with the data that was gathered by the 
+[NeuroPsy Research app](https://github.com/OlafHaag/NeuroPsyResearchApp) and preprocessed with the accompanying 
+[Analysis Dash app](https://ucmwebapp.herokuapp.com).   
 
 
 ## Description
 
-A longer description of your project goes here...
+There are several hypotheses about the distributions of the data in question.
+This project examines the probabilities of the hypotheses given the data. 
 
 
 ## Note
