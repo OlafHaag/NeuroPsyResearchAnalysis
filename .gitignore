@@ -1,5 +1,6 @@
 # Temporary and binary files
 *~
+.env
 *.py[cod]
 *.so
 *.cfg

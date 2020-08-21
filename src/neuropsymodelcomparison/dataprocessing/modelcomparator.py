@@ -3,7 +3,6 @@
 """
 
 """
-from multiprocessing import freeze_support
 from pathlib import Path
 from typing import Union
 
@@ -43,10 +42,10 @@ class ModelComparison:
         self.model_funcs = [self.get_model_0,
                             self.get_model_1,
                             self.get_model_2,
-                            #self.get_model_3,
-                            #self.get_model_4,
-                            #self.get_model_5,
-                            #self.get_model_6,
+                            self.get_model_3,
+                            self.get_model_4,
+                            self.get_model_5,
+                            self.get_model_6,
                             ]
         # ToDo: The priors are the shape and scale parameters, or mu and sigma of the Gamma distributions.
         # We test the hypotheses on each user and get a distribution of hypotheses distributions.
@@ -427,73 +426,3 @@ class ModelComparison:
 
         print("Writing posteriors to file: ", destination)
         self.posteriors.dropna(how='all').to_csv(destination)
-
-
-if __name__ == '__main__':
-    """ To run this and resolve relative imports, run:
-        python -m neuropsymodelcomparison.dataprocessing.modelcomparator
-    """
-    freeze_support()
-
-    # ++++++++++++++++++++++++++++++++++++
-    # ++ Model 0 conform data           ++
-    # ++++++++++++++++++++++++++++++++++++
-    # Create some data conforming to M0: all deviations on average equal across blocks.
-    n_trials = 300 - np.random.randint(25)
-    df0 = pd.DataFrame({'user': 0, 'block': 1 + np.random.randint(3, size=n_trials),
-                        'parallel': np.random.normal(0.0, 2.5, size=n_trials),
-                        'orthogonal': np.random.normal(0.0, 2.5, size=n_trials)})
-    
-    # ++++++++++++++++++++++++++++++++++++
-    # ++ Model 1 conform data           ++
-    # ++++++++++++++++++++++++++++++++++++
-    # Create some data conforming to M1.
-    # Variable length of trials per block due to exclusions.
-    n_trials = 100 - np.random.randint(15, size=3)
-    # blocks 1&3 have smallest orthogonal deviations, but largest parallel deviations. Strong synergy.
-    block1 = pd.DataFrame({'user': 1, 'block': 1,
-                           'parallel': np.random.normal(0.0, 3.0, size=n_trials[0]),
-                           'orthogonal': np.random.normal(0.0, 1.0, size=n_trials[0])})
-    block3 = pd.DataFrame({'user': 1, 'block': 3,
-                           'parallel': np.random.normal(0.0, 3.0, size=n_trials[1]),
-                           'orthogonal': np.random.normal(0.0, 1.0, size=n_trials[1])})
-    # Block 2 has smaller parallel deviations than blocks 1&3, but higher orthogonal deviations than blocks 1&3.
-    # No synergy.
-    block2 = pd.DataFrame({'user': 1, 'block': 2,
-                           'parallel': np.random.normal(0.0, 2.0, size=n_trials[2]),
-                           'orthogonal': np.random.normal(0.0, 2.0, size=n_trials[2])})
-    df1 = pd.concat((block1, block2, block3), axis='index')
-
-    # ++++++++++++++++++++++++++++++++++++
-    # ++ Model 2 conform data           ++
-    # ++++++++++++++++++++++++++++++++++++
-    # Create some data conforming to M1.
-    # Variable length of trials per block due to exclusions.
-    n_trials = 100 - np.random.randint(15, size=3)
-    # blocks 1&3 have smallest orthogonal deviations, but largest parallel deviations. Strong synergy.
-    block1 = pd.DataFrame({'user': 2, 'block': 1,
-                           'parallel': np.random.normal(0.0, 3.0, size=n_trials[0]),
-                           'orthogonal': np.random.normal(0.0, 1.0, size=n_trials[0])})
-    block3 = pd.DataFrame({'user': 2, 'block': 3,
-                           'parallel': np.random.normal(0.0, 3.0, size=n_trials[1]),
-                           'orthogonal': np.random.normal(0.0, 1.0, size=n_trials[1])})
-    # Block 2 has smaller parallel deviations than in blocks 1&3, equal to orthogonal deviations in blocks in average.
-    # No synergy.
-    block2 = pd.DataFrame({'user': 2, 'block': 2,
-                           'parallel': np.random.normal(0.0, 1.0, size=n_trials[2]),
-                           'orthogonal': np.random.normal(0.0, 1.0, size=n_trials[2])})
-    df2 = pd.concat((block1, block2, block3), axis='index')
-
-    # ++++++++++++++++++++++++++++++++++++
-    # ++ Compute posteriors             ++
-    # ++++++++++++++++++++++++++++++++++++
-    # Have one dataset with each user representing a model.
-    df = pd.concat((df0, df1, df2), axis='index')
-    comparison = ModelComparison(df)
-    # Compute model posterior for each user.
-    for user in range(3):
-        print(f"Validate Model {user} Calculations.")
-        comparison.compare_models(user=user)
-    # Write results to file.
-    output_file = Path.cwd() / "reports/tests/testdata_posteriors.csv"
-    comparison.write_posteriors(output_file)

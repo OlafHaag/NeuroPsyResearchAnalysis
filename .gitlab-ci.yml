@@ -1,0 +1,60 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache: &global_cache
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - condaenv
+  policy: pull
+
+stages:
+  - prepare
+  - build
+  - test
+
+image: continuumio/miniconda3:latest
+
+before_script:
+  - apt-get update -q -y
+  - apt-get install -y build-essential
+  - conda config --set env_prompt '({name})'
+  - conda install mamba -c conda-forge
+  - mamba env create --prefix ./condaenv -f environment.yml
+  - source activate ./condaenv
+  - pip install .
+
+# Prepare the conda environment
+prepare:
+  stage: prepare
+  script:
+    - echo "Created the env"
+  cache:
+    <<: *global_cache
+    # override the policy
+    policy: pull-push
+
+build1:
+  stage: build
+  script:
+    - echo "Do your build here"
+    - python scripts/getrawdata.py
+    #- make -C figures
+  artifacts:
+    untracked: true
+    expire_in: 1 week
+  only:
+    changes:
+      - reports/*
+      - data/*
+
+test1:
+  stage: test
+  script:
+    - pytest
+  artifacts:
+    untracked: true
+    expire_in: 1 week
+  only:
+    changes:
+      - reports/*
