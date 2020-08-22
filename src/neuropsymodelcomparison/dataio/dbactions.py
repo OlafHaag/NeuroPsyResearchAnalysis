@@ -1,4 +1,5 @@
 """ Database actions """
+import logging
 import os
 import psycopg2
 import pandas as pd
@@ -18,7 +19,7 @@ def get_db_table(table: str, index_col='id'):
     # Read url from secret environment variable. Set this in your CI environment.
     url = os.getenv('DATABASE_URL')
     if url is None:
-        print("ERROR: Environment variable DATABASE_URL not set.")
+        logging.error("Environment variable DATABASE_URL not set.")
         return pd.DataFrame()
         
     # Create an engine instance.
