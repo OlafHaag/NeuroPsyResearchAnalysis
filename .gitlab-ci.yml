@@ -92,4 +92,3 @@ trigger_job:
   stage: .post
   trigger:
     project: OlafHaag/thesis
-    strategy: depend
