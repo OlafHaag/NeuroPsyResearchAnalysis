@@ -2,31 +2,33 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
-cache: &global_cache
-  key: ${CI_COMMIT_REF_SLUG}
-  paths:
-    - condaenv
-  policy: pull
+default:
+  cache: &global_cache
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - condaenv
+      - .cache/pip
+    policy: pull
+
+  image: continuumio/miniconda3:latest
+
+  before_script:
+    - apt-get update -q -y
+    - apt-get install -y build-essential
+    - conda config --set env_prompt '({name})'
+    - conda update mamba -c conda-forge
+    - mamba env update --prefix ./condaenv -f environment.yml
+    - source activate ./condaenv
+    - pip install .
 
 stages:
-  - prepare
-  - build
+  - gather
+  - analyses
   - test
-
-image: continuumio/miniconda3:latest
-
-before_script:
-  - apt-get update -q -y
-  - apt-get install -y build-essential
-  - conda config --set env_prompt '({name})'
-  - conda install mamba -c conda-forge
-  - mamba env update --prefix ./condaenv -f environment.yml
-  - source activate ./condaenv
-  - pip install .
 
 # Prepare the conda environment
 prepare:
-  stage: prepare
+  stage: .pre
   script:
     - echo "Created the env"
   cache:
@@ -34,27 +36,60 @@ prepare:
     # override the policy
     policy: pull-push
 
-build1:
-  stage: build
+getRawData:
+  stage: gather
   script:
     - echo "Do your build here"
     - python scripts/getrawdata.py
     #- make -C figures
   artifacts:
-    untracked: true
+    name: "$CI_JOB_NAME"
+    paths:
+      - data/raw/
+    exclude:
+      - data/**/.gitignore
+    untracked: false
     expire_in: 1 week
-  only:
-    changes:
-      - reports/*
-      - data/*
 
-test1:
+analysis1:
+  stage: analyses
+  script:
+    - echo "Analyse here."
+  needs:
+    - job: getRawData
+      artifacts: true
+  artifacts:
+    name: "$CI_JOB_NAME"
+    paths:
+      - data/
+      - reports
+    exclude:
+      - data/**/.gitignore
+      - data/raw/
+      - reports/tests/
+    untracked: false
+    expire_in: 1 week
+
+testDummyData:
   stage: test
   script:
-    - pytest
+    - "pytest -v tests/test_modelcomparison.py::TestModelComparator"
+  dependencies: []
   artifacts:
-    untracked: true
+    name: "$CI_JOB_NAME"
+    paths:
+      - reports/tests/
+    exclude:
+      - reports/**/.gitignore
+    untracked: false
     expire_in: 1 week
-  only:
-    changes:
-      - reports/*
+  rules:
+    - changes:
+        - src/neuropsymodelcomparison/dataprocessing/*.py
+  needs: [prepare]
+
+trigger_job:
+  stage: .post
+  trigger:
+    project: OlafHaag/thesis
+    strategy: depend
