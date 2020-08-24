@@ -19,7 +19,6 @@ default:
     - conda install mamba -c conda-forge
     - mamba env update --prefix ./condaenv -f environment.yml
     - source activate ./condaenv
-    - pip install .
 
 stages:
   - gather

@@ -30,6 +30,7 @@ dependencies:
   - pytest
   - pytest-cov
   - autopep8
+  - jupyterlab
   - pip:
       - astroid
       - isort
@@ -38,3 +39,4 @@ dependencies:
       - pylint
       - toml
       - wrapt
+      - -e .
