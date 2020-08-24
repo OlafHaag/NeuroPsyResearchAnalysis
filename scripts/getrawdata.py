@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 import pandas as pd
 
@@ -26,3 +27,6 @@ if __name__ == "__main__":
     users.to_csv(raw_data_folder / 'users.csv')
     blocks.to_csv(raw_data_folder / 'blocks.csv')
     trials.to_csv(raw_data_folder / 'trials.csv')
+
+    logging.info(f"Written raw data to {raw_data_folder.resolve()}")
+    
