@@ -64,7 +64,6 @@ preprocess:
       - reports
     exclude:
       - data/**/.gitignore
-      - data/raw/
       - reports/**/.gitignore
       - reports/tests/
     untracked: false

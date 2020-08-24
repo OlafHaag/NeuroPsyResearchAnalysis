@@ -22,8 +22,8 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 # Read in raw data from files.
 
 # %%
-data_path = Path.cwd() / '/data/'  # Run from project root.
-raw_data_path = data_path / 'raw/'
+data_path = Path.cwd() / 'data'  # Run from project root.
+raw_data_path = data_path / 'raw'
 
 users = pd.read_csv(raw_data_path / 'users.csv')
 blocks = pd.read_csv(raw_data_path / 'blocks.csv', index_col='id')
