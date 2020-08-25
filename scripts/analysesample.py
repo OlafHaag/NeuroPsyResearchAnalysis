@@ -172,11 +172,12 @@ df.to_csv(destination_path / 'trials.csv')
 logging.info(f"Written preprocessed trials data to {(destination_path / 'trials.csv').resolve()}")
 
 # Save data about exclusions. Make a copy and add content, so we can run this notebook separately from the previous one.
-sampling_path = data_path / 'interim/sampling.txt'
-shutil.copy(str(sampling_path), str(destination_path / sampling_path.name))  # String conversion needed in Python < 3.9.
-sampling_path = destination_path / sampling_path.name
+sampling_report = Path.cwd() / 'reports/interim/sampling.txt'
+destination_path = sampling_report.parent.parent / sampling_report.name
+# With Python version < 3.9 we need to provide strings to copy.
+shutil.copy(str(sampling_report), str(destination_path))
 
-with sampling_path.open(mode='a') as f:
+with destination_path.open(mode='a') as f:
     f.write(f"contamination={contamination}\n")
     f.write(f"trials_proportion_theshold={trials_proportion_theshold}\n")
     f.write(f"trials_count_threshold={trials_count_threshold}\n")
@@ -186,7 +187,7 @@ with sampling_path.open(mode='a') as f:
     f.writelines([f"final_gender_{k}={v}\n" for k,v in users['gender'].value_counts(dropna=False).iteritems()])
     f.writelines([f"final_age_{k}={v}\n" for k,v in users['age_group'].value_counts(dropna=False).iteritems()])
 
-logging.info(f"Written sampling data to {sampling_path.resolve()}")
+logging.info(f"Written sampling data to {destination_path.resolve()}")
 
 # Save figures.
 figures_path = Path.cwd() / 'reports/figures'

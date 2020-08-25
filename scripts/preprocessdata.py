@@ -79,8 +79,8 @@ df.to_csv(file_path)
 logging.info(f"Written interim trials data to {file_path.resolve()}")
 
 # Save data about exclusions.
-sampling_path = interim_data_path / 'sampling.txt'
-with sampling_path.open(mode='w') as f:
+sampling_report = Path.cwd() / 'reports/interim/sampling.txt'
+with sampling_report.open(mode='w') as f:
     f.write(f"start_date={start_date}\n")
     f.write(f"end_date={str((pd.to_datetime(end_date) - pd.to_timedelta(1, unit='d')).date())}\n")
     f.write(f"n_testers={n_testers}\n")
@@ -90,4 +90,4 @@ with sampling_path.open(mode='w') as f:
     f.write(f"n_excluded_malfunction={n_users_malfunction}\n")
     f.write(f"n_invalid_sessions={len(invalid_sessions)}\n")
     f.write(f"n_invalid_trials={n_trials_removed}\n")
-logging.info(f"Written sampling data to {sampling_path.resolve()}")
+logging.info(f"Written sampling data to {sampling_report.resolve()}")
