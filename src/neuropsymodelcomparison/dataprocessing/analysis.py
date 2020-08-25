@@ -101,7 +101,7 @@ def join_data(users, blocks, trials):
     df['grab_diff'] = (df['df2_grab'] - df['df1_grab']).abs()
     df['duration_diff'] = (df['df2_duration'] - df['df1_duration']).abs()
     # Exclude columns.
-    df.drop(columns=['user_id', 'block_id'], inplace=True)
+    df.drop(columns=['user_id'], inplace=True)
     return df
 
 
@@ -216,7 +216,7 @@ def get_pca_vectors_by(dataframe, by=None):
         v = get_pca_vectors(pca_df)
         vector_pairs.append(v)
     else:
-        grouped = dataframe.groupby(by)
+        grouped = dataframe.groupby(by, observed=True)  # With categorical groupers we want only non-empty groups.
         for group, data in grouped:
             pca_df = get_pca_data(data)
             v = get_pca_vectors(pca_df)
@@ -392,7 +392,7 @@ def get_mean(dataframe, column, by=None):
     if by is None:
         means = dataframe[column].mean()
     else:
-        means = dataframe.groupby(by)[column].mean()
+        means = dataframe.groupby(by, observed=True)[column].mean()
     return means
 
 
@@ -426,7 +426,7 @@ def get_descriptive_stats(data, by=None):
         stats = data.agg([f_avg, 'mean', f_var, 'count']).T
         stats['count'] = stats['count'].astype(int)
     else:
-        grouped = data.groupby(by)
+        grouped = data.groupby(by, observed=True)
         stats = grouped.agg([f_avg, 'mean', f_var])
         stats['count'] = grouped.size()
         stats.dropna(inplace=True)
@@ -462,7 +462,7 @@ def get_statistics(df_trials, df_proj):
         # For degrees of freedom absolute average is the same as the mean, since there are no negative values.
         df_dof_stats.drop('absolute average', axis='columns', level=1, inplace=True)
         # Get covariance between degrees of freedom.
-        cov = df_trials.groupby(groupers).apply(lambda x: np.cov(x[['df1', 'df2']].T, ddof=0)[0, 1])
+        cov = df_trials.groupby(groupers, observed=True).apply(lambda x: np.cov(x[['df1', 'df2']].T, ddof=0)[0, 1])
         try:
             cov = cov.to_frame(('df1,df2 covariance', ''))  # MultiIndex.
         except AttributeError:  # In case cov is an empty Dataframe.
@@ -538,12 +538,14 @@ def normality_test(df, columns, multivariate=False):
     """
     if multivariate:
         # Multivariate testing.
-        is_normal, p = df.groupby(['user', 'block'])[columns].apply(pg.multivariate_normality)
-        res = df.groupby(['user', 'block'])[['df1', 'df2']].apply(pg.multivariate_normality).apply(pd.Series)\
+        is_normal, p = df.groupby(['user', 'block'], observed=True)[columns].apply(pg.multivariate_normality)
+        res = df.groupby(['user', 'block'], observed=True)[['df1', 'df2']].apply(pg.multivariate_normality)\
+            .apply(pd.Series)\
             .rename(columns={0: 'normal', 1: 'p'})
     else:
         # We would want to minimize type II error rate, risk of not rejecting the null when it's false.
-        res = df.groupby(['user', 'block'])[columns].apply(pg.normality).unstack(level=2)  # Shapiro-Wilk tests.
+        # Shapiro-Wilk tests.
+        res = df.groupby(['user', 'block'], observed=True)[columns].apply(pg.normality).unstack(level=2)  
     return res
 
 

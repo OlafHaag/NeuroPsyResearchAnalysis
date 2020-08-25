@@ -25,15 +25,13 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 data_path = Path.cwd() / 'data'  # Run from project root.
 raw_data_path = data_path / 'raw'
 
-users = pd.read_csv(raw_data_path / 'users.csv')
-blocks = pd.read_csv(raw_data_path / 'blocks.csv', index_col='id')
-blocks['time_iso'] = pd.to_datetime(blocks['time_iso'])
+users = pd.read_csv(raw_data_path / 'users.csv', dtype={'gaming_exp': pd.Int8Dtype()})
+blocks = pd.read_csv(raw_data_path / 'blocks.csv', index_col='id', parse_dates=['time_iso'])
 trials = pd.read_csv(raw_data_path / 'trials.csv', index_col='id')
 
 # %% [markdown]
 # Data collection began on August 1st 2020 and ended on August 31st 2020. Data collected before that time period was 
 # pilot data to test the funtionality of the app and tune the priors.  
-# Filter out invalid data. Keep a record of what was excluded and for which reasons.
 # 
 
 # %%
@@ -49,6 +47,13 @@ blocks = blocks.loc[(blocks['time_iso'] > start_date) & (blocks['time_iso'] < en
 # How many people took part during that period?
 n_users = blocks['user_id'].nunique()
 
+# Keep only those users that participated in the given time period.
+users = users.loc[users['id'].isin(blocks['user_id'].unique()), :]
+
+# %% [markdown]
+# Filter out invalid data. Keep a record of what was excluded and for which reasons.
+
+# %%
 # If a subsequent block is completed within 2 seconds after the previous one, there was a malfunction in the app. 
 # A session must consist of 3 blocks.
 blocks, n_errors, invalid_sessions = analysis.remove_erroneous_blocks(blocks, delta_time=2.0, n_blocks=3)
@@ -69,8 +74,9 @@ n_trials_removed += n_trials - len(df)
 # %%
 interim_data_path = data_path / 'interim'
 # Save trial data.
-df.to_csv(interim_data_path / 'trials.csv')
-logging.info(f"Written interim trials data to {(interim_data_path / 'trials.csv').resolve()}")
+file_path = interim_data_path / 'trials.csv'
+df.to_csv(file_path)
+logging.info(f"Written interim trials data to {file_path.resolve()}")
 
 # Save data about exclusions.
 sampling_path = interim_data_path / 'sampling.txt'
@@ -79,6 +85,8 @@ with sampling_path.open(mode='w') as f:
     f.write(f"end_date={str((pd.to_datetime(end_date) - pd.to_timedelta(1, unit='d')).date())}\n")
     f.write(f"n_testers={n_testers}\n")
     f.write(f"n_users={n_users}\n")
+    f.writelines([f"total_gender_{k}={v}\n" for k,v in users['gender'].value_counts(dropna=False).iteritems()])
+    f.writelines([f"total_age_{k}={v}\n" for k,v in users['age_group'].value_counts(dropna=False).iteritems()])
     f.write(f"n_excluded_malfunction={n_users_malfunction}\n")
     f.write(f"n_invalid_sessions={len(invalid_sessions)}\n")
     f.write(f"n_invalid_trials={n_trials_removed}\n")
