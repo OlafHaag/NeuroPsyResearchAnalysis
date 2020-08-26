@@ -89,6 +89,24 @@ sample_analysis:
     untracked: false
     expire_in: 1 week
 
+descriptive_statistics:
+  stage: analyses
+  script:
+    - python scripts/describedof.py
+    # more scripts here.
+  needs:
+    - job: sample_analysis
+      artifacts: true
+  artifacts:
+    name: "$CI_JOB_NAME"
+    paths:
+      - reports
+    exclude:
+      - reports/**/.gitignore
+      - reports/tests/
+    untracked: false
+    expire_in: 1 week
+
 testDummyData:
   stage: test
   script:

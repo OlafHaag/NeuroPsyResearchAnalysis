@@ -206,7 +206,7 @@ def add_pca_ellipses(fig, pca_dataframe):
         pass
 
 
-def generate_histograms(dataframe, by=None, legend_title=None):
+def generate_histograms(dataframe, by=None, x_title="", legend_title=None, **layout_kwargs):
     """ Plot distribution of data to visually check for normal distribution.
     
     :param dataframe: Data for binning. When by is given this must be only 2 columns with one of them being the grouper.
@@ -251,11 +251,15 @@ def generate_histograms(dataframe, by=None, legend_title=None):
                     color = theme['colors'][i+1]
                 colors.append(color)
             fig = ff.create_distplot(data,  labels, colors=colors, curve_type='normal')  # Override default 'kde'.
-            
+
+    if not x_title:
+        x_title = "Value"
+
     fig.layout.update(legend=legend,
                       yaxis={'title': 'Probability Density'},
-                      xaxis={'title': 'Final State Value'},
+                      xaxis={'title': x_title},
                       margin=theme['graph_margins'],
+                      **layout_kwargs,
                       )
     return fig
 
@@ -387,7 +391,7 @@ def generate_means_figure(dataframe, variables=None):
     return fig
 
 
-def generate_violin_figure(dataframe, columns, ytitle, legend_title=None):
+def generate_violin_figure(dataframe, columns, ytitle, legend_title=None, **layout_kwargs):
     """ Plot 2 columns of data as violin plot, grouped by block.
 
     :param dataframe: Variance of projections.
@@ -445,7 +449,7 @@ def generate_violin_figure(dataframe, columns, ytitle, legend_title=None):
                       jitter=0.1,  # Add some jitter on points for better visibility.
                       scalemode='count')  # Scale violin plot area with total count.
 
-    fig.update_layout(violingap=0, violingroupgap=0, violinmode='overlay', hovermode='closest')
+    fig.update_layout(violingap=0, violingroupgap=0, violinmode='overlay', hovermode='closest', **layout_kwargs)
     fig.update_xaxes(tickvals=task_order[dataframe['task'].unique()],
                      ticktext=task_order[dataframe['task'].unique()].index)
     fig.update_yaxes(zeroline=True, zerolinewidth=2, zerolinecolor='LightPink')
@@ -534,7 +538,7 @@ def generate_lines_plot(dataframe, y_var, errors=None, by='user', facets='condit
     return fig
 
 
-def generate_qq_plot(dataframe, vars_, dist='norm'):
+def generate_qq_plot(dataframe, vars_, dist='norm', **layout_kwargs):
     """ Plotting sample distribution quantiles against theoretical quantiles.
     
     :param dataframe:
@@ -583,5 +587,7 @@ def generate_qq_plot(dataframe, vars_, dist='norm'):
         
     fig.layout.update(legend=legend,
                       hovermode=False,
-                      margin={'l': 60, 'b': 60, 't': 40, 'r': 40})
+                      margin={'l': 60, 'b': 60, 't': 40, 'r': 40},
+                      **layout_kwargs
+                      )
     return fig
