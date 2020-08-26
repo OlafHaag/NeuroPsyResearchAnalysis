@@ -22,6 +22,8 @@ default:
 
 stages:
   - gather
+  - preprocess1
+  - preprocess2
   - analyses
   - test
 
@@ -50,7 +52,7 @@ getRawData:
     expire_in: 1 week
 
 preprocess:
-  stage: analyses
+  stage: preprocess1
   script:
     - echo "Preprocessing Data."
     - python scripts/preprocessdata.py
@@ -70,7 +72,7 @@ preprocess:
     expire_in: 1 week
 
 sample_analysis:
-  stage: analyses
+  stage: preprocess2
   script:
     - echo "Removing Outliers."
     - python scripts/analysesample.py
