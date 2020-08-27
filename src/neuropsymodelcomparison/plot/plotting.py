@@ -305,7 +305,7 @@ def generate_pca_figure(dataframe, **layout_kwargs):
     return fig
 
 
-def generate_means_figure(dataframe, variables=None):
+def generate_means_figure(dataframe, variables=None, **layout_kwargs):
     """ Barplots for variables grouped by block.
     Variable for each user is plotted as well as mean over all users.
     
@@ -390,6 +390,7 @@ def generate_means_figure(dataframe, variables=None):
         margin=theme['graph_margins'],
         legend=legend,
         hovermode='closest',
+        **layout_kwargs,
     )
     return fig
 
