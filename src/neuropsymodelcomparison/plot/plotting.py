@@ -57,7 +57,7 @@ def get_ellipse_coordinates(x_center=0, y_center=0, axis=(1, 0), a=1, b=1, n=100
     return x, y
 
 
-def generate_trials_figure(df, contour_data=None):
+def generate_trials_figure(df, marker_opacity=0.7, marker_size=10, contour_data=None, **layout_kwargs):
     """ Scatter plot of data.
     
     :param df: Data
@@ -77,8 +77,8 @@ def generate_trials_figure(df, contour_data=None):
                   for _, j in df[df['task'] == t].iterrows()],
             hoverinfo='text',
             mode='markers',
-            opacity=0.7,
-            marker={'size': 10,
+            opacity=marker_opacity,
+            marker={'size': marker_size,
                     'color': theme[t],
                     'line': {'width': 0.5, 'color': 'white'}
                     },
@@ -140,7 +140,7 @@ def generate_trials_figure(df, contour_data=None):
 
     fig.update_xaxes(hoverformat='.2f')
     fig.update_yaxes(hoverformat='.2f')
-
+    fig.update_layout(**layout_kwargs)
     return fig
 
 
@@ -180,20 +180,23 @@ def get_pca_annotations(pca_dataframe):
     return arrows
 
 
-def add_pca_ellipses(fig, pca_dataframe):
+def add_pca_ellipses(fig, pca_dataframe, size=2.0):
     """ Get data for drawing ellipses around data for each block.
     Ellipses are only scaled by explained variance, not by spread of the actual data.
     
     :param fig: Figure to add ellipses to.
     :param pca_dataframe: Tabular results of PCA.
+    :param float size: Size of ellipses is determined setting the semi-major & semi-minor axes to the the square root
+                       of explained variance by the principal components and then multiplying them with this size value.
+                       Default is 2.0.
     """
     # Each block displays its principal components.
     try:
         for name, group in pca_dataframe.groupby('task'):
             x, y = get_ellipse_coordinates(*group[['meanx', 'meany']].iloc[0],
                                            axis=group[['x', 'y']].iloc[0],
-                                           a=np.sqrt(group['var_expl'].iloc[0])*2,
-                                           b=np.sqrt(group['var_expl'].iloc[1])*2,
+                                           a=np.sqrt(group['var_expl'].iloc[0])*size,
+                                           b=np.sqrt(group['var_expl'].iloc[1])*size,
                                            )
             fig.add_scattergl(x=x,
                               y=y,
@@ -264,7 +267,7 @@ def generate_histograms(dataframe, by=None, x_title="", legend_title=None, **lay
     return fig
 
 
-def generate_pca_figure(dataframe):
+def generate_pca_figure(dataframe, **layout_kwargs):
     """ Plot explained variance by principal components as Bar plot with cumulative explained variance.
     
     :param dataframe: Results of PCA.
@@ -297,7 +300,7 @@ def generate_pca_figure(dataframe):
     else:
         fig.update_traces(texttemplate='%{y:.2f}%', textposition='outside')
     finally:
-        fig.layout.update(**layout)
+        fig.layout.update(**layout, **layout_kwargs)
     
     return fig
 
