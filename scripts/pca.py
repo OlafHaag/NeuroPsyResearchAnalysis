@@ -80,7 +80,7 @@ logging.info(f"Written report to {out_file.resolve()}")
 
 out_file = reports_path / 'pca-ucm-angles.csv'
 # Flatten multiindex for saving.
-angle_df.reset_index().to_csv(out_file, index=False)
+angle_df.to_csv(out_file, index=False)
 logging.info(f"Written report to {out_file.resolve()}")
 
 # Save figures.
