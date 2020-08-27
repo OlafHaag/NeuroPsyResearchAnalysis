@@ -91,10 +91,11 @@ sample_analysis:
     untracked: false
     expire_in: 1 week
 
-descriptive_statistics:
+analysis:
   stage: analyses
   script:
     - python scripts/describedof.py
+    - python scripts/pca.py
     # more scripts here.
   needs:
     - job: sample_analysis
