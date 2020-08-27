@@ -191,10 +191,10 @@ logging.info(f"Written sampling data to {destination_path.resolve()}")
 
 # Save figures.
 figures_path = Path.cwd() / 'reports/figures'
-fig_trials_scatter_filepath = figures_path / 'outliers_scatter.pdf'
+fig_trials_scatter_filepath = figures_path / 'scatter-outliers.pdf'
 fig_trials_scatter.write_image(str(fig_trials_scatter_filepath))
 logging.info(f"Written figure to {fig_trials_scatter_filepath.resolve()}")
 
-fig_exclusions_filepath = figures_path / 'exclusions_barplot.pdf'
+fig_exclusions_filepath = figures_path / 'barplot-exclusions.pdf'
 fig_exclusions.write_image(str(fig_exclusions_filepath))
 logging.info(f"Written figure to {fig_exclusions_filepath.resolve()}")

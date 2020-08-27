@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 
 import pandas as pd
+import plotly.express as px
 import plotly.io as pio
 
 from neuropsymodelcomparison.dataprocessing import analysis
@@ -35,6 +36,7 @@ df[['user', 'session', 'block', 'block_id', 'condition', 'task']] = df[['user', 
 
 # When we view statistics by task, we want them to to be displyed in a certain order.
 task_display_order = ['pre', 'df1', 'df2', 'df1|df2', 'post']
+df.task.cat.reorder_categories(task_display_order, inplace=True)
 
 # %% [markdown]
 # ## Analysis of Slider Usage
@@ -54,12 +56,13 @@ onset_stats = df.groupby('task', sort=False)[['df1_grab', 'df2_grab']].describe(
 
 # %%
 fig_duration = plot.generate_violin_figure(df[['user', 'condition', 'block', 'task', 'df1_duration', 'df2_duration']]\
-                .rename(columns={'df1_duration': 'df1','df2_duration': 'df2'}),
-                        ['df1', 'df2'], ytitle='Grab Duration (s)', legend_title="DOF", autosize=False, width=1000)
+                                           .rename(columns={'df1_duration': 'df1','df2_duration': 'df2'}),
+                                           ['df1', 'df2'], ytitle='Grab Duration (s)', legend_title="DOF",
+                                           autosize=False, width=1000)
 
 # %%
 duration_stats = df.groupby('task', sort=False)[['df1_duration', 'df2_duration']]\
-                    .describe().stack(level=0).T[task_display_order]
+                   .describe().stack(level=0).T[task_display_order]
 
 # %% [markdown]
 # ## Normality Inspections
@@ -97,10 +100,25 @@ for task, group in df.groupby('task', sort=False):
 final_state_stats = df.groupby('task')[['df1', 'df2']].describe().stack(level=0).T[task_display_order]
 
 # %%
-histograms['sum'] = plot.generate_histograms(df[['task', 'sum']], by='task', x_title="Final State Sum Values", legend_title="Block Type", width=1000)
+histograms['sum'] = plot.generate_histograms(df[['task', 'sum']], by='task', x_title="Final State Sum Values",
+                                             legend_title="Block Type", width=1000)
+
+# %% [markdown]
+# ## Performance Variable
 
 # %%
 sum_stats = df.groupby('task')['sum'].describe().T[task_display_order]
+
+# %%
+# Use a barplot instead of a boxplot, because it more clearly conveys the core statistics we're interested in.
+fig_sum_stats = px.bar(sum_stats.T.reset_index(), x='task', y='mean', error_y='std',
+                       labels={'mean': 'Sum Mean', 'task': 'Task'}, width=500)
+
+# %%
+sum_stats_by_condition = df.groupby(['condition', 'block'], sort=False, observed=True)['sum']\
+                           .agg(['mean', 'std', 'count'])
+fig_sum_by_condition = px.bar(sum_stats_by_condition.reset_index(), x='block', y='mean', error_y='std',
+                              facet_col='condition', labels={'mean': 'Sum Mean', 'block': 'Block'})
 
 # %% [markdown]
 # ## Save Reports
@@ -128,28 +146,41 @@ out_file = reports_path / 'final_state_stats.csv'
 final_state_stats.to_csv(out_file)
 logging.info(f"Written report to {out_file.resolve()}")
 
+out_file = reports_path / 'sum_stats_by_condition.csv'
+sum_stats_by_condition.reset_index().to_csv(out_file, index=False)
+logging.info(f"Written report to {out_file.resolve()}")
+
+
 # Save figures.
 figures_path = reports_path / 'figures'
-# Violin plots.
-fig_filepath = figures_path / 'dof_onset.pdf'
+# Violin plots
+fig_filepath = figures_path / 'violin-dof_onset.pdf'
 fig_onset.write_image(str(fig_filepath))
 logging.info(f"Written figure to {fig_filepath.resolve()}")
 
-fig_filepath = figures_path / 'dof_duration.pdf'
+fig_filepath = figures_path / 'violin-dof_duration.pdf'
 fig_duration.write_image(str(fig_filepath))
 logging.info(f"Written figure to {fig_filepath.resolve()}")
-
-fig_filepath = figures_path / 'qq-plot_dof.pdf'
+# QQ-Plots
+fig_filepath = figures_path / 'qq-plot-dof.pdf'
 fig_qq_dof.write_image(str(fig_filepath))
 logging.info(f"Written figure to {fig_filepath.resolve()}")
 
-fig_filepath = figures_path / 'qq-plot_sum.pdf'
+fig_filepath = figures_path / 'qq-plot-sum.pdf'
 fig_qq_sum.write_image(str(fig_filepath))
 logging.info(f"Written figure to {fig_filepath.resolve()}")
-
+# Histograms
 for hist_name, fig in histograms.items():
-    fig_filepath = figures_path / f'histogram_{hist_name.replace("|", "-")}.pdf'
+    fig_filepath = figures_path / f'histogram-{hist_name.replace("|", "-")}.pdf'
     fig.write_image(str(fig_filepath))
     logging.info(f"Written figure to {fig_filepath.resolve()}")
+# Barplots
+fig_filepath = figures_path / 'barplot-sum.pdf'
+fig_sum_stats.write_image(str(fig_filepath))
+logging.info(f"Written figure to {fig_filepath.resolve()}")
+
+fig_filepath = figures_path / 'barplot-sum_by_condition.pdf'
+fig_sum_by_condition.write_image(str(fig_filepath))
+logging.info(f"Written figure to {fig_filepath.resolve()}")
 
 

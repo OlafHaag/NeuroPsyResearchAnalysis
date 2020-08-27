@@ -86,10 +86,10 @@ logging.info(f"Written report to {out_file.resolve()}")
 # Save figures.
 figures_path = Path.cwd() / 'reports/figures'
 
-barplot_filepath = figures_path / 'pca-barplot.pdf'
+barplot_filepath = figures_path / 'barplot-pca.pdf'
 pca_barplot.write_image(str(barplot_filepath))
 logging.info(f"Written figure to {barplot_filepath.resolve()}")
 
-fig_scatter_filepath = figures_path / 'pca_scatter.pdf'
+fig_scatter_filepath = figures_path / 'scatter-pca.pdf'
 fig_scatter.write_image(str(fig_scatter_filepath))
 logging.info(f"Written figure to {fig_scatter_filepath.resolve()}")
