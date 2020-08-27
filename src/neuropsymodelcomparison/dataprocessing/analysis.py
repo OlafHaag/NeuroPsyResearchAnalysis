@@ -188,15 +188,12 @@ def get_pca_vectors(dataframe):
     :return: Principal components as vector pairs in input space with mean as origin first and offset second.
     :rtype: list
     """
-    vectors = list()
     # Use the "components" to define the direction of the vectors,
     # and the "explained variance" to define the squared-length of the vectors.
-    for idx, row in dataframe.iterrows():
-        v = row[['x', 'y']].values * np.sqrt(row['var_expl']) * 3  # Scale up for better visibility.
-        mean = row[['meanx', 'meany']].values
-        mean_offset = (mean, mean + v)
-        vectors.append(mean_offset)
-    
+    directions = dataframe[['x', 'y']] * np.sqrt(dataframe[['var_expl']].values) * 3
+    # Move the directions by the mean, so we get vectors pointing to the start and vectors pointing to the destination.
+    vector2 = directions + dataframe[['meanx', 'meany']].values
+    vectors = list(zip(dataframe[['meanx', 'meany']].values, vector2.values))
     return vectors
 
 
@@ -268,21 +265,16 @@ def get_orthogonal_vec2d(vec):
 def get_pc_ucm_angles(dataframe, vec_ucm):
     """ Computes the interior angles between pca vectors and ucm parallel/orthogonal vectors.
     
-    :param dataframe: PCA data .
+    :param dataframe: PCA data.
     :type dataframe: pandas.DataFrame
     :param vec_ucm: Vector parallel to UCM.
     :type vec_ucm: numpy.ndarray
     :return: Each angle between principal components and UCM parallel and orthogonal vector.
     :rtype: pandas.DataFrame
     """
-    vec_ucm_ortho = get_orthogonal_vec2d(vec_ucm)
-    df_angles = pd.DataFrame(columns=['parallel', 'orthogonal'])
-    for idx, row in dataframe.iterrows():
-        angle_parallel = get_interior_angle(vec_ucm, row[['x', 'y']])
-        angle_ortho = get_interior_angle(vec_ucm_ortho, row[['x', 'y']])
-        df_angles.loc[idx] = [angle_parallel, angle_ortho]
-    df_angles[['parallel', 'orthogonal']] = df_angles[['parallel', 'orthogonal']].astype(float)
-    df_angles.insert(0, 'PC', dataframe['PC'])
+    df_angles = dataframe[['x', 'y']].transform(lambda x: (a:=get_interior_angle(vec_ucm, x), 90.0 - a),
+                                                axis='columns').rename(columns={'x': 'parallel', 'y': 'orthogonal'})
+    df_angles = pd.concat((dataframe[['task', 'PC']], df_angles), axis='columns')
     return df_angles
 
 
