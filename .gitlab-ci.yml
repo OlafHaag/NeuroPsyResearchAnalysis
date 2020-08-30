@@ -24,6 +24,7 @@ stages:
   - gather
   - preprocess
   - analyses
+  - model_comparison
   - test
 
 # Prepare the conda environment
@@ -67,7 +68,7 @@ preprocess:
     exclude:
       - data/**/.gitignore
       - reports/**/.gitignore
-      - reports/tests/
+      - reports/tests/*
     untracked: false
     expire_in: 1 week
 
@@ -88,7 +89,25 @@ analysis:
       - reports
     exclude:
       - reports/**/.gitignore
-      - reports/tests/
+      - reports/tests/*
+    untracked: false
+    expire_in: 1 week
+
+model_comparison:
+  stage: model_comparison
+  script:
+    - python scripts/07-modelcomparison.py
+    # more scripts here.
+  needs:
+    - job: preprocess
+      artifacts: true
+  artifacts:
+    name: "$CI_JOB_NAME"
+    paths:
+      - reports
+    exclude:
+      - reports/**/.gitignore
+      - reports/tests/*
     untracked: false
     expire_in: 1 week
 
