@@ -104,7 +104,7 @@ model_comparison:
   stage: model_comparison
   script:
     - python scripts/07-modelcomparison.py
-    # more scripts here.
+  timeout: 3h
   needs:
     - job: preprocess
       artifacts: true
