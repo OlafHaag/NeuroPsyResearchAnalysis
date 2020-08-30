@@ -32,10 +32,17 @@ prepare:
   stage: .pre
   script:
     - echo "Created the env"
+    - conda env export > ./reports/environment.yml
   cache:
     <<: *global_cache
     # override the policy
     policy: pull-push
+  artifacts:
+    name: "PythonEnvironment"
+    paths:
+      - reports/environment.yml
+    untracked: false
+    expire_in: 1 week
 
 getRawData:
   stage: gather
