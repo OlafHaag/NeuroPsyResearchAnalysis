@@ -407,6 +407,7 @@ class ModelComparison:
         :return: Dictionary holding for each model its posterior probability.
         :rtype: dict[int]
         """
+        print(f"\nCommencing model comparison for user {user}...\n")
         # Get models for observed data of participant.
         df = self._filter_by_user(user)
         models = self.get_models(df)
