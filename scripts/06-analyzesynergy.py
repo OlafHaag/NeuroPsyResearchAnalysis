@@ -106,9 +106,9 @@ wilcoxon_results = wilcoxon_results.append(wilcoxon_by_condition)
 # ## Visual inspection of Synergy Index
 
 # %%
-fig_dVz = sns.catplot(x="block", y="$\Delta V_z$",
+fig_dVz = sns.catplot(x="block", y="$\\Delta V_z$",
                       hue="user", col="condition",
-                      data=df.rename(columns={'dVz': '$\Delta V_z$'}), kind="point",
+                      data=df.rename(columns={'dVz': '$\\Delta V_z$'}), kind="point",
                       dodge=True,
                       height=4, aspect=.7)
 
@@ -118,9 +118,9 @@ logging.info(f"Written figure to {fig_filepath.resolve()}")
 
 
 # %%
-fig_dVz = sns.catplot(x="block", y="$\Delta V_z$",
+fig_dVz = sns.catplot(x="block", y="$\\Delta V_z$",
                       hue="condition",
-                      data=df.rename(columns={'dVz': '$\Delta V_z$'}), kind="point",
+                      data=df.rename(columns={"dVz": "$\\Delta V_z$"}), kind="point",
                       dodge=True,
                       height=4, aspect=1.333)
 
