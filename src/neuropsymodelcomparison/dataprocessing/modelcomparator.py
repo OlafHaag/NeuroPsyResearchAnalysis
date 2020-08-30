@@ -26,13 +26,16 @@ class ModelComparison:
     * Model 6: Main effect of treatment (block 2 > block 1&3).
     """
 
-    def __init__(self, df_projections):
+    def __init__(self, df_projections, min_samples=20):
         """
         :param df_projections: DataFrame with columns 'user', 'block', 'parallel', 'orthogonal'.
         :type df_projections: pandas.DataFrame
+        :param min_samples: Minimum number of samples per block for each user.
+                            Users will be excluded if they don't meet requirement.
+        :type min_samples: int
         """
         # Preprocess data.
-        self.df = self.preprocess_data(df_projections)
+        self.df = self.preprocess_data(df_projections, min_samples=min_samples)
         # Parameters for PyMC3 sampling method.
         # TODO: find good parameter values for sampling. Acceptance rate with NUTS should be around 0.8
         # Higher acceptance rate than 0.8 for proposed parameters is not better!
@@ -78,12 +81,13 @@ class ModelComparison:
         # If a user does not have enough samples in each block, exclude entirely.
         counts = df.groupby(['user', 'block']).agg(count=('block', 'count')).unstack(level='block')
         counts.columns = counts.columns.droplevel(0)
-        mask = (counts > min_samples).all(axis='columns')
+        mask = (counts >= min_samples).all(axis='columns')
         excluded = ', '.join([str(u) for u in mask[~mask].index.values])
         if excluded:
             print(f"WARNING: Removing users {excluded} from analysis because they don't meet the requirement of "
                   f"having at least {min_samples} valid samples in all blocks.")
             df = df[df['user'].map(mask)]
+        print("Done.")
         return df
     
     #####################
