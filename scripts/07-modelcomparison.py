@@ -30,8 +30,8 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 # %%
 # Common folder paths.
-data_path = Path.cwd() / 'data/preprocessed')
-reports_path = Path.cwd() / 'reports')
+data_path = Path.cwd() / 'data/preprocessed'
+reports_path = Path.cwd() / 'reports'
 figures_path = reports_path / 'figures'
 
 # Read in data.
@@ -67,7 +67,9 @@ for user in df['user'].unique():
 # ## Visualize Results
 
 # %%
-fig_posteriors = px.imshow(model_comp.posteriors, labels=dict(x="Model", y="Participant", color="Posterior<br>Probability"), color_continuous_scale='Greys', zmin=0, zmax=1, aspect='equal')
+fig_posteriors = px.imshow(model_comp.posteriors, labels=dict(x="Model", y="Participant", 
+                           color="Posterior<br>Probability"), color_continuous_scale='Greys',
+                           zmin=0, zmax=1, aspect='equal')
 fig_posteriors.update_xaxes(side="top")
 fig_posteriors.update_yaxes(tickmode='array', tickvals=model_comp.posteriors.index)
 
@@ -78,7 +80,7 @@ fig_posteriors.update_yaxes(tickmode='array', tickvals=model_comp.posteriors.ind
 # Save tables.
 output_file = reports_path / "posteriors.csv"
 model_comp.write_posteriors(output_file)
-logging.info(f"Written report to {out_file.resolve()}")
+logging.info(f"Written report to {output_file.resolve()}")
 
 # Save Figures
 fig_filepath = figures_path / 'heatmap-posteriors.pdf'
