@@ -1,5 +1,8 @@
 """
 This module contains functions for creating figures.
+
+This file originated from the online analysis project at:
+https://github.com/OlafHaag/UCM-WebApp
 """
 import itertools
 import string
@@ -460,7 +463,8 @@ def generate_violin_figure(dataframe, columns, ytitle, legend_title=None, **layo
     return fig
 
 
-def generate_lines_plot(dataframe, y_var, errors=None, by='user', facets='condition', color_col=None, jitter=False):
+def generate_lines_plot(dataframe, y_var, errors=None, by='user', facets='condition', color_col=None, jitter=False,
+                        **layout_kwargs):
     """ Intended for use with either df1/df2 or parallel/orthogonal.
     
     :param dataframe: Values to plot
@@ -538,7 +542,9 @@ def generate_lines_plot(dataframe, y_var, errors=None, by='user', facets='condit
         pass
     fig.layout.update(yaxis_title=y_var.capitalize(),
                       legend=legend,
-                      margin=theme['graph_margins'])
+                      margin=theme['graph_margins'],
+                      **layout_kwargs,
+                      )
     return fig
 
 

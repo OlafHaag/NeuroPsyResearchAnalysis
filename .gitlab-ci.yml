@@ -22,8 +22,7 @@ default:
 
 stages:
   - gather
-  - preprocess1
-  - preprocess2
+  - preprocess
   - analyses
   - test
 
@@ -41,7 +40,7 @@ getRawData:
   stage: gather
   script:
     - echo "Getting raw data from database."
-    - python scripts/getrawdata.py
+    - python scripts/00-getrawdata.py
   artifacts:
     name: "$CI_JOB_NAME"
     paths:
@@ -52,32 +51,13 @@ getRawData:
     expire_in: 1 week
 
 preprocess:
-  stage: preprocess1
+  stage: preprocess
   script:
     - echo "Preprocessing Data."
-    - python scripts/preprocessdata.py
+    - python scripts/01-preprocessdata.py
+    - python scripts/02-analysesample.py
   needs:
     - job: getRawData
-      artifacts: true
-  artifacts:
-    name: "$CI_JOB_NAME"
-    paths:
-      - data/
-      - reports
-    exclude:
-      - data/**/.gitignore
-      - reports/**/.gitignore
-      - reports/tests/
-    untracked: false
-    expire_in: 1 week
-
-sample_analysis:
-  stage: preprocess2
-  script:
-    - echo "Removing Outliers."
-    - python scripts/analysesample.py
-  needs:
-    - job: preprocess
       artifacts: true
   artifacts:
     name: "$CI_JOB_NAME"
@@ -94,11 +74,13 @@ sample_analysis:
 analysis:
   stage: analyses
   script:
-    - python scripts/describedof.py
-    - python scripts/pca.py
+    - python scripts/03-describedof.py
+    - python scripts/04-preformance.py
+    - python scripts/05-pca.py
+    - python scripts/06-analyzesynergy.py
     # more scripts here.
   needs:
-    - job: sample_analysis
+    - job: preprocess
       artifacts: true
   artifacts:
     name: "$CI_JOB_NAME"

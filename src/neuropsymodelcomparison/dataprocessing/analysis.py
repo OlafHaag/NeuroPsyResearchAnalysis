@@ -1,3 +1,7 @@
+""" This file originated from the online analysis project at:
+https://github.com/OlafHaag/UCM-WebApp
+"""
+
 import itertools
 
 import pandas as pd
@@ -403,73 +407,63 @@ def get_descriptive_stats(data, by=None):
     # Pandas default var returns unbiased population variance /(n-1). Doesn't make a difference for synergy indices.
     f_var = lambda series: series.var(ddof=0)
     f_var.__name__ = 'variance'  # Column name gets function name.
-    f_avg = lambda series: series.abs().mean()
-    f_avg.__name__ = 'absolute average'
     # When there're no data, return empty DataFrame with columns.
     if data.empty:
         if by:
             data.set_index(by, drop=True, inplace=True)
-        col_idx = pd.MultiIndex.from_product([data.columns, [f_avg.__name__, 'mean', f_var.__name__]])
+        col_idx = pd.MultiIndex.from_product([data.columns, ['mean', f_var.__name__]])
         stats = pd.DataFrame(None, index=data.index, columns=col_idx)
         stats['count'] = None
         return stats
     
     if not by:
-        stats = data.agg([f_avg, 'mean', f_var, 'count']).T
+        stats = data.agg(['mean', f_var, 'count']).T
         stats['count'] = stats['count'].astype(int)
     else:
         grouped = data.groupby(by, observed=True)
-        stats = grouped.agg([f_avg, 'mean', f_var])
+        stats = grouped.agg(['mean', f_var])
         stats['count'] = grouped.size()
         stats.dropna(inplace=True)
     return stats
 
 
-def get_statistics(df_trials, df_proj):
-    """ Calculate descriptive statistics for key values of the anaylsis.
-    
-    :param df_trials: Data from joined table on trials.
-    :type df_trials: pandas.DataFrame
-    :param df_proj: Projections onto UCM and its orthogonal space.
-    :type df_proj: pandas.DataFrame
+def get_statistics(dataframe):
+    """ Calculate descriptive statistics including synergy indices for key values of the anaylsis.
+
+    :param dataframe: Data from joined table on trials with projections.
+    :type dataframe: pandas.DataFrame
     :return: Descriptive statistics and synergy indices.
     :rtype: pandas.DataFrame
     """
-    groupers = ['user', 'session', 'condition', 'block', 'task']
+    groupers = ['user', 'session', 'condition', 'block_id', 'block', 'task']
     try:
-        # Get only those trials we have the projections for, in the same order.
-        df_trials = df_trials.iloc[df_proj.index]
-        df_trials[groupers] = df_trials[groupers].astype('category')
+        dataframe[groupers] = dataframe[groupers].astype('category')
     except (KeyError, ValueError):
-        df_proj_stats = get_descriptive_stats(pd.DataFrame(columns=df_proj.columns))
-        df_dof_stats = get_descriptive_stats(pd.DataFrame(columns=df_trials.columns))
+        df_stats = get_descriptive_stats(pd.DataFrame(columns=dataframe.columns))
         cov = pd.DataFrame(columns=[('df1,df2 covariance', '')])
     else:
-        df_proj[groupers] = df_trials[groupers]
-        # Get statistic characteristics of absolute lengths.
-        df_proj_stats = get_descriptive_stats(df_proj, by=groupers)
-        # Clean-up to match data on degrees of freedom.
-        df_proj_stats.dropna(inplace=True)
-        df_dof_stats = get_descriptive_stats(df_trials[groupers + ['df1', 'df2', 'sum']], by=groupers)
-        # For degrees of freedom absolute average is the same as the mean, since there are no negative values.
-        df_dof_stats.drop('absolute average', axis='columns', level=1, inplace=True)
+        df_stats = get_descriptive_stats(dataframe[groupers + ['df1', 'df2', 'sum', 'parallel', 'orthogonal']],
+                                                  by=groupers).drop(columns=[('parallel', 'mean'),  # Always equal 0.
+                                                                             ('orthogonal', 'mean')])
+        # Get statistic characteristics of absolute lengths of projections.
+        length = dataframe.groupby(groupers, observed=True)[['parallel', 'orthogonal']].agg(lambda x: x.abs().mean())
+        length.columns = pd.MultiIndex.from_product([length.columns, ['absolute average']])
         # Get covariance between degrees of freedom.
-        cov = df_trials.groupby(groupers, observed=True).apply(lambda x: np.cov(x[['df1', 'df2']].T, ddof=0)[0, 1])
+        cov = dataframe.groupby(groupers, observed=True)[['df1', 'df2']].apply(lambda x: np.cov(x.T, ddof=0)[0, 1])
         try:
             cov = cov.to_frame(('df1,df2 covariance', ''))  # MultiIndex.
         except AttributeError:  # In case cov is an empty Dataframe.
             cov = pd.DataFrame(columns=pd.MultiIndex.from_tuples([('df1,df2 covariance', '')]))
 
-    # We now have 1 count column too many, since the projection statistics already has the identical column.
-    df_dof_stats.drop('count', axis='columns', level=0, inplace=True)
-    # For projections the mean is 0, since projections are from deviations from the mean. So we don't need to show it.
-    df_proj_stats.drop('mean', axis='columns', level=1, inplace=True)
     # Get synergy indices based on projection variances we just calculated.
-    df_synergies = get_synergy_indices(df_proj_stats.xs('variance', level=1, axis='columns'))
+    df_synergies = get_synergy_indices(df_stats[['parallel', 'orthogonal']].xs('variance', level=1, axis='columns'))
     # Before we merge dataframes, give this one a Multiindex, too.
     df_synergies.columns = pd.MultiIndex.from_product([df_synergies.columns, ['']])
     # Join the 3 statistics to be displayed in a single table.
-    df = pd.concat((df_dof_stats, cov, df_proj_stats, df_synergies), axis='columns')
+    df = pd.concat((df_stats, cov, length, df_synergies), axis='columns')
+    # Sort the columns manually.
+    df = df.sort_index(axis='columns', level=0)[['count', 'df1', 'df2', 'df1,df2 covariance', 'sum', 
+                                                 'parallel', 'orthogonal', 'dV', 'dVz']]
     return df
 
 
