@@ -63,7 +63,7 @@ preprocess:
     name: "$CI_JOB_NAME"
     paths:
       - data/
-      - reports
+      - reports/
     exclude:
       - data/**/.gitignore
       - reports/**/.gitignore
@@ -75,7 +75,7 @@ analysis:
   stage: analyses
   script:
     - python scripts/03-describedof.py
-    - python scripts/04-preformance.py
+    - python scripts/04-performance.py
     - python scripts/05-pca.py
     - python scripts/06-analyzesynergy.py
     # more scripts here.
