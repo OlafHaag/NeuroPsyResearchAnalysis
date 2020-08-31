@@ -1,8 +1,9 @@
 # Ignore everything in this directory
 *
-# Except this file, license and .gitignore in sub directories
+# Except this file, license, readme and .gitignore in sub directories
 !.gitignore
 !LICENSE
+!README.md
 !raw
 !external
 !preprocessed
