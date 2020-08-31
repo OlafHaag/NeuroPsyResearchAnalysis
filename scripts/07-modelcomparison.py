@@ -46,9 +46,9 @@ else:
     config_parser.read_string(sample_info)
     min_trials = int(config_parser.get('dummy_section', 'trials_count_threshold', fallback=18))
 
-df = pd.read_csv(data_path / 'trials.csv', index_col='id')
+trial_data = pd.read_csv(data_path / 'trials.csv', index_col='id')
 # We only analyze the first session of each participant.
-df = df.loc[df['session'] == 1, ['user', 'block', 'parallel', 'orthogonal']]
+df = trial_data.loc[trial_data['session'] == 1, ['user', 'block', 'parallel', 'orthogonal']]
 
 
 # %%
@@ -63,15 +63,28 @@ model_comp = ModelComparison(df, min_samples=min_trials)
 for user in df['user'].unique():
     model_comp.compare_models(user)
 
+# %%
+# Augment posterior data.
+# Condition.
+conditions = trial_data.loc[trial_data['user'].isin(model_comp.posteriors.index), ['user','condition']].drop_duplicates().set_index('user')
+model_comp.posteriors['condition'] = model_comp.posteriors.join(conditions)
+# Gaming experience.
+exp = pd.read_csv('../data/preprocessed/users.csv').loc[model_comp.posteriors.index, 'gaming_exp']
+model_comp.posteriors['gaming_exp'] = model_comp.posteriors.join(exp)
+
 # %% [markdown]
 # ## Visualize Results
 
 # %%
-fig_posteriors = px.imshow(model_comp.posteriors, labels=dict(x="Model", y="Participant", 
-                           color="Posterior<br>Probability"), color_continuous_scale='Greys',
-                           zmin=0, zmax=1, aspect='equal')
-fig_posteriors.update_xaxes(side="top")
-fig_posteriors.update_yaxes(tickmode='array', tickvals=model_comp.posteriors.index)
+fig_posteriors = px.imshow(model_comp.posteriors.drop(['condition', 'gaming_exp']).reset_index(drop=True), 
+                           labels=dict(x="Model", y="Participant", color="Posterior<br>Probability"), 
+                           color_continuous_scale='Greys', zmin=0, zmax=1,
+                           aspect='equal', height=len(model_comp.posteriors)*30, width=500)
+fig_posteriors.update_xaxes(side="top", showspikes=True, spikemode="across")
+fig_posteriors.update_yaxes(tickmode='array', 
+                            tickvals=list(range(len(model_comp.posteriors))),
+                            ticktext=model_comp.posteriors.index,
+                            showspikes=True)
 
 # %% [markdown]
 # ## Save Reports
