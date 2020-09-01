@@ -41,7 +41,7 @@ class ModelComparison:
         # Higher acceptance rate than 0.8 for proposed parameters is not better!
         # It just means we're not getting closer to a local maximum and are still climbing up the hill.
         self.draws = 2000
-        self.tune = 200
+        self.tune = 600
         self.model_funcs = [self.get_model_0,
                             self.get_model_1,
                             self.get_model_2,
@@ -67,13 +67,13 @@ class ModelComparison:
         :type min_samples: int
         :rtype: pandas.DataFrame
         """
-        print("Preprocessing data...")
+        print("Preprocessing data...", end="")
         df = dataframe.copy()
         try:
             df[['user', 'block']] = df[['user', 'block']].astype('category')
             df.sort_values(by=['user', 'block'], inplace=True)
             # We need squared deviations.
-            df[['parallel', 'orthogonal']] = df[['parallel', 'orthogonal']].apply(np.square)
+            df[['parallel', 'orthogonal']] = df[['parallel', 'orthogonal']].transform('square')
         except KeyError:
             raise KeyError("Missing columns in dataframe. Make sure it has columns: "
                            "'user', 'block', 'parallel' and 'orthogonal'.")
@@ -84,7 +84,7 @@ class ModelComparison:
         mask = (counts >= min_samples).all(axis='columns')
         excluded = ', '.join([str(u) for u in mask[~mask].index.values])
         if excluded:
-            print(f"WARNING: Removing users {excluded} from analysis because they don't meet the requirement of "
+            print(f"\nWARNING: Removing users {excluded} from analysis because they don't meet the requirement of "
                   f"having at least {min_samples} valid samples in all blocks.")
             df = df[df['user'].map(mask)]
         print("Done.")
@@ -106,16 +106,16 @@ class ModelComparison:
         """
         with pm.Model() as model:
             model.name = "Null Model"
-            # Assume that the squared deviations are drawn from a Gamma distribution with unknown shape/scale
-            # parameters. Both parameters have to be positive, so draw them from a Gamma prior, too.
+            # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
+            # Both parameters have to be positive, so draw them from a Gamma prior, too.
             # TODO: Perhaps use the alternative parametrization with mu, sigma instead, once you have the pilot data.
-            shape = pm.Gamma("shape", alpha=1.0, beta=1.0)
-            scale = pm.Gamma("scale", alpha=1.0, beta=1.0)
+            mu = pm.Gamma("mu", mu=72.10, sigma=61.78)
+            sigma = pm.Gamma("sigma", mu=243.36, sigma=189.30)
 
             blocks = dataframe.set_index('block').groupby('block')
             for block, data in blocks:
-                obs = pm.Gamma(f"obs_block{block}_parallel", alpha=shape, beta=scale, observed=data['parallel'])
-                obs = pm.Gamma(f"obs_block{block}_orthogonal", alpha=shape, beta=scale, observed=data['orthogonal'])
+                obs = pm.Gamma(f"obs_block{block}_parallel", mu=mu, sigma=sigma, observed=data['parallel'])
+                obs = pm.Gamma(f"obs_block{block}_orthogonal", mu=mu, sigma=sigma, observed=data['orthogonal'])
         return model
     
     def get_model_1(self, dataframe):
@@ -135,8 +135,8 @@ class ModelComparison:
         """
         with pm.Model() as model:
             model.name = "Precision dependent on Synergy"
-            # Assume that the squared deviations are drawn from a Gamma distribution with unknown shape/scale
-            # parameters. Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
+            # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
+            # Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
             # variables is gamma-distributed again.
             scale = pm.Gamma("scale", alpha=1.0, beta=1.0)
             shape_ortho_1_3 = pm.Gamma("shape", alpha=1.0, beta=1.0)
@@ -182,8 +182,8 @@ class ModelComparison:
         """
         with pm.Model() as model:
             model.name = "Precision independent of Synergy"
-            # Assume that the squared deviations are drawn from a Gamma distribution with unknown shape/scale
-            # parameters. Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
+            # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
+            # Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
             # variables is gamma-distributed again.
             scale = pm.Gamma("scale", alpha=1.0, beta=1.0)
             shape_ortho = pm.Gamma("shape", alpha=1.0, beta=1.0)
@@ -219,8 +219,8 @@ class ModelComparison:
         """
         with pm.Model() as model:
             model.name = "Training Effect"
-            # Assume that the squared deviations are drawn from a Gamma distribution with unknown shape/scale
-            # parameters. Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
+            # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
+            # Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
             # variables is gamma-distributed again.
             scale = pm.Gamma("scale", alpha=1.0, beta=1.0)
             shape_ortho = pm.Gamma("shape", alpha=1.0, beta=1.0)
@@ -258,8 +258,8 @@ class ModelComparison:
         """
         with pm.Model() as model:
             model.name = "Split Attention Effect"
-            # Assume that the squared deviations are drawn from a Gamma distribution with unknown shape/scale
-            # parameters. Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
+            # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
+            # Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
             # variables is gamma-distributed again.
             scale = pm.Gamma("scale", alpha=1.0, beta=1.0)
             shape = pm.Gamma("shape", alpha=1.0, beta=1.0)
@@ -292,8 +292,8 @@ class ModelComparison:
         """
         with pm.Model() as model:
             model.name = "Main Effect Projection"
-            # Assume that the squared deviations are drawn from a Gamma distribution with unknown shape/scale
-            # parameters. Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
+            # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
+            # Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
             # variables is gamma-distributed again.
             scale = pm.Gamma("scale", alpha=1.0, beta=1.0)
             shape_ortho = pm.Gamma("shape", alpha=1.0, beta=1.0)
@@ -325,8 +325,8 @@ class ModelComparison:
         """
         with pm.Model() as model:
             model.name = "Main Effect Block"
-            # Assume that the squared deviations are drawn from a Gamma distribution with unknown shape/scale
-            # parameters. Both parameters have to be positive, so draw them from a Gamma prior, too.
+            # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
+            # Both parameters have to be positive, so draw them from a Gamma prior, too.
             # TODO: Perhaps use the alternative parametrization with mu, sigma instead, once we have the pilot data.
             scale = pm.Gamma("scale", alpha=1.0, beta=1.0)
             base_shape = pm.Gamma("shape", alpha=1.0, beta=1.0)
