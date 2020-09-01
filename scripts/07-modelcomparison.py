@@ -66,10 +66,12 @@ for user in df['user'].unique():
 # %%
 # Augment posterior data.
 # Condition.
-conditions = trial_data.loc[trial_data['user'].isin(model_comp.posteriors.index), ['user','condition']].drop_duplicates().set_index('user')
+conditions = trial_data.loc[trial_data['user'].isin(model_comp.posteriors.index), 
+                            ['user','condition']].drop_duplicates().set_index('user')
 model_comp.posteriors['condition'] = model_comp.posteriors.join(conditions)
 # Gaming experience.
-exp = pd.read_csv('../data/preprocessed/users.csv').loc[model_comp.posteriors.index, 'gaming_exp']
+exp = pd.read_csv('../data/preprocessed/users.csv', 
+                  dtype={'gaming_exp': pd.Int8Dtype()}).loc[model_comp.posteriors.index, 'gaming_exp']
 model_comp.posteriors['gaming_exp'] = model_comp.posteriors.join(exp)
 
 # %% [markdown]

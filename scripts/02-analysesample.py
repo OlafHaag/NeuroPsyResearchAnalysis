@@ -92,12 +92,12 @@ df_counts = df.groupby(['user', 'session', 'block_id', 'block', 'condition'], ob
               .size().rename('valid trials count').reset_index()
 
 # Display some more information about users.
-users = pd.read_csv(data_path / 'raw/users.csv')
+users = pd.read_csv(data_path / 'raw/users.csv', dtype={'gaming_exp': pd.Int8Dtype()})
 df_counts['gender'] = df_counts['user'].map(users['gender'])
 df_counts['age_group'] = df_counts['user'].map(users['age_group'])
 df_counts['gaming_exp'] = df_counts['user'].map(users['gaming_exp'])
 # How did they rate the block?
-blocks = pd.read_csv(data_path / 'raw/blocks.csv', index_col='id')
+blocks = pd.read_csv(data_path / 'raw/blocks.csv', index_col='id', dtype={'rating': pd.Int8Dtype()})
 df_counts['rating'] = df_counts['block_id'].map(blocks['rating'])
 
 

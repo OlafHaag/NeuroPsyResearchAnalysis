@@ -26,7 +26,8 @@ data_path = Path.cwd() / 'data'  # Run from project root.
 raw_data_path = data_path / 'raw'
 
 users = pd.read_csv(raw_data_path / 'users.csv', dtype={'gaming_exp': pd.Int8Dtype()})
-blocks = pd.read_csv(raw_data_path / 'blocks.csv', index_col='id', parse_dates=['time_iso'])
+blocks = pd.read_csv(raw_data_path / 'blocks.csv', index_col='id', parse_dates=['time_iso'],
+                     dtype={'rating': pd.Int8Dtype()})
 trials = pd.read_csv(raw_data_path / 'trials.csv', index_col='id')
 
 # %% [markdown]
