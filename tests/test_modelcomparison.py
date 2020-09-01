@@ -14,17 +14,17 @@ class TestModelComparator:
         # ++ Model 0 conform data           ++
         # ++++++++++++++++++++++++++++++++++++
         # Create some data conforming to M0: all deviations on average equal across blocks.
-        n_trials = 300 - np.random.randint(25)
+        n_trials = 270 - np.random.randint(36)
         df0 = pd.DataFrame({'user': 0, 'block': 1 + np.random.randint(3, size=n_trials),
-                            'parallel': np.random.normal(0.0, 2.5, size=n_trials),
-                            'orthogonal': np.random.normal(0.0, 2.5, size=n_trials)})
+                            'parallel': np.random.normal(0.0, 4.0, size=n_trials),
+                            'orthogonal': np.random.normal(0.0, 4.0, size=n_trials)})
         
         # ++++++++++++++++++++++++++++++++++++
         # ++ Model 1 conform data           ++
         # ++++++++++++++++++++++++++++++++++++
         # Create some data conforming to M1.
         # Variable length of trials per block due to exclusions.
-        n_trials = 100 - np.random.randint(15, size=3)
+        n_trials = 30 - np.random.randint(12, size=3)
         # blocks 1&3 have smallest orthogonal deviations, but largest parallel deviations. Strong synergy.
         block1 = pd.DataFrame({'user': 1, 'block': 1,
                             'parallel': np.random.normal(0.0, 3.0, size=n_trials[0]),
@@ -44,7 +44,7 @@ class TestModelComparator:
         # ++++++++++++++++++++++++++++++++++++
         # Create some data conforming to M1.
         # Variable length of trials per block due to exclusions.
-        n_trials = 100 - np.random.randint(15, size=3)
+        n_trials = 30 - np.random.randint(12, size=3)
         # blocks 1&3 have smallest orthogonal deviations, but largest parallel deviations. Strong synergy.
         block1 = pd.DataFrame({'user': 2, 'block': 1,
                             'parallel': np.random.normal(0.0, 3.0, size=n_trials[0]),
