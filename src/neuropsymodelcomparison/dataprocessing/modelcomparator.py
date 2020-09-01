@@ -109,8 +109,8 @@ class ModelComparison:
             # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
             # Both parameters have to be positive, so draw them from a Gamma prior, too.
             # TODO: Perhaps use the alternative parametrization with mu, sigma instead, once you have the pilot data.
-            mu = pm.Gamma("mu", mu=72.10, sigma=61.78)
-            sigma = pm.Gamma("sigma", mu=243.36, sigma=189.30)
+            mu = pm.Gamma("mu", mu=31.15, sigma=20.83)
+            sigma = pm.Gamma("sigma", mu=120.41, sigma=138.90)
 
             blocks = dataframe.set_index('block').groupby('block')
             for block, data in blocks:
