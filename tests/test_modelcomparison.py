@@ -68,7 +68,7 @@ class TestModelComparator:
         # ++++++++++++++++++++++++++++++++++++
         # ++ Compute posteriors             ++
         # ++++++++++++++++++++++++++++++++++++
-        model_comp = npmc.dataprocessing.ModelComparison(df)
+        model_comp = npmc.dataprocessing.ModelComparison(df, min_samples=10)
         # Compute model posterior for each user.
         for user in range(3):
             print(f"Validate Model {user} Calculations.")
