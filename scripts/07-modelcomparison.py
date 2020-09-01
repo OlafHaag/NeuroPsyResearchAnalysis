@@ -68,17 +68,18 @@ for user in df['user'].unique():
 # Condition.
 conditions = trial_data.loc[trial_data['user'].isin(model_comp.posteriors.index), 
                             ['user','condition']].drop_duplicates().set_index('user')
-model_comp.posteriors['condition'] = model_comp.posteriors.join(conditions)
+model_comp.posteriors = model_comp.posteriors.join(conditions)
 # Gaming experience.
-exp = pd.read_csv('../data/preprocessed/users.csv', 
+exp = pd.read_csv('../data/raw/users.csv', 
                   dtype={'gaming_exp': pd.Int8Dtype()}).loc[model_comp.posteriors.index, 'gaming_exp']
-model_comp.posteriors['gaming_exp'] = model_comp.posteriors.join(exp)
+model_comp.posteriors = model_comp.posteriors.join(exp)
 
 # %% [markdown]
 # ## Visualize Results
 
 # %%
-fig_posteriors = px.imshow(model_comp.posteriors.drop(['condition', 'gaming_exp']).reset_index(drop=True), 
+fig_posteriors = px.imshow(model_comp.posteriors.drop(['condition', 'gaming_exp'], 
+                                                      axis='columns').reset_index(drop=True),
                            labels=dict(x="Model", y="Participant", color="Posterior<br>Probability"), 
                            color_continuous_scale='Greys', zmin=0, zmax=1,
                            aspect='equal', height=len(model_comp.posteriors)*30, width=500)
@@ -93,9 +94,9 @@ fig_posteriors.update_yaxes(tickmode='array',
 
 # %%
 # Save tables.
-output_file = reports_path / "posteriors.csv"
-model_comp.write_posteriors(output_file)
-logging.info(f"Written report to {output_file.resolve()}")
+out_file = reports_path / "posteriors.csv"
+model_comp.write_posteriors(out_file)
+logging.info(f"Written report to {out_file.resolve()}")
 
 # Save Figures
 fig_filepath = figures_path / 'heatmap-posteriors.pdf'
