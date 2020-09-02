@@ -41,7 +41,7 @@ class ModelComparison:
         # Higher acceptance rate than 0.8 for proposed parameters is not better!
         # It just means we're not getting closer to a local maximum and are still climbing up the hill.
         self.draws = 2000
-        self.tune = 600
+        self.tune = 2000
         self.model_funcs = [self.get_model_0,
                             self.get_model_1,
                             self.get_model_2,
@@ -50,6 +50,7 @@ class ModelComparison:
                             self.get_model_5,
                             self.get_model_6,
                             ]
+        self.traces = {user: dict() for user in self.df['user'].unique()}
         # ToDo: The priors are the shape and scale parameters, or mu and sigma of the Gamma distributions.
         # We test the hypotheses on each user and get a distribution of hypotheses distributions.
         self.posteriors = pd.DataFrame(columns=[f"M{i}" for i in range(len(self.model_funcs))],
@@ -353,9 +354,10 @@ class ModelComparison:
         models = list()
         print(f"Building {len(self.model_funcs)} models...")
         for i, func in enumerate(self.model_funcs):
+            print(f"Model {i}: '{model.name}'...", end="")
             model = func(data)
             models.append(model)
-            print(f"Model {i}: '{model.name}' done.")
+            print("done.")
         return models
     
     #############
