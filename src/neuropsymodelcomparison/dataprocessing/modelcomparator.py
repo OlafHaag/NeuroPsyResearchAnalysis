@@ -354,10 +354,9 @@ class ModelComparison:
         models = list()
         print(f"Building {len(self.model_funcs)} models...")
         for i, func in enumerate(self.model_funcs):
-            print(f"Model {i}: '{model.name}'...", end="")
             model = func(data)
             models.append(model)
-            print("done.")
+            print(f"Model {i}: '{model.name}' done.")
         return models
     
     #############
