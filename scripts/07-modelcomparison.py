@@ -30,7 +30,7 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 # %%
 # Common folder paths.
-data_path = Path.cwd() / 'data/preprocessed'
+data_path = Path.cwd() / 'data'
 reports_path = Path.cwd() / 'reports'
 figures_path = reports_path / 'figures'
 
@@ -46,7 +46,7 @@ else:
     config_parser.read_string(sample_info)
     min_trials = int(config_parser.get('dummy_section', 'trials_count_threshold', fallback=18))
 
-trial_data = pd.read_csv(data_path / 'trials.csv', index_col='id')
+trial_data = pd.read_csv(data_path / 'preprocessed/trials.csv', index_col='id')
 # We only analyze the first session of each participant.
 df = trial_data.loc[trial_data['session'] == 1, ['user', 'block', 'parallel', 'orthogonal']]
 
@@ -70,8 +70,8 @@ conditions = trial_data.loc[trial_data['user'].isin(model_comp.posteriors.index)
                             ['user','condition']].drop_duplicates().set_index('user')
 model_comp.posteriors = model_comp.posteriors.join(conditions)
 # Gaming experience.
-exp = pd.read_csv('../data/raw/users.csv', 
-                  dtype={'gaming_exp': pd.Int8Dtype()}).loc[model_comp.posteriors.index, 'gaming_exp']
+users_path = data_path / 'raw/users.csv'
+exp = pd.read_csv(users_path, dtype={'gaming_exp': pd.Int8Dtype()}).loc[model_comp.posteriors.index, 'gaming_exp']
 model_comp.posteriors = model_comp.posteriors.join(exp)
 
 # %% [markdown]
