@@ -20,6 +20,8 @@ dependencies:
   - python-kaleido
   - Matplotlib
   - Seaborn
+  - graphviz
+  - python-graphviz
   - mkl
   - mkl-service
   - theano
