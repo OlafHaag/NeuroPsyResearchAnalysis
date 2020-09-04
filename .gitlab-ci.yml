@@ -2,6 +2,13 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
+workflow:
+  rules:
+    - changes:
+        - src/**/*
+        - scripts/*.py
+        - tests/*.py
+
 default:
   cache: &global_cache
     key: ${CI_COMMIT_REF_SLUG}
