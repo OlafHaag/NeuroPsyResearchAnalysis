@@ -14,10 +14,11 @@ class TestModelComparator:
         # ++ Model 0 conform data           ++
         # ++++++++++++++++++++++++++++++++++++
         # Create some data conforming to M0: all deviations on average equal across blocks.
-        n_trials = 270 - np.random.randint(36)
+        n_trials = 90 - np.random.randint(36)
         df0 = pd.DataFrame({'user': 0, 'block': 1 + np.random.randint(3, size=n_trials),
                             'parallel': np.random.normal(0.0, 4.0, size=n_trials),
                             'orthogonal': np.random.normal(0.0, 4.0, size=n_trials)})
+        
         
         # ++++++++++++++++++++++++++++++++++++
         # ++ Model 1 conform data           ++
@@ -52,14 +53,25 @@ class TestModelComparator:
         block3 = pd.DataFrame({'user': 2, 'block': 3,
                             'parallel': np.random.normal(0.0, 3.0, size=n_trials[1]),
                             'orthogonal': np.random.normal(0.0, 1.0, size=n_trials[1])})
-        # Block 2 has smaller parallel deviations than in blocks 1&3, equal to orthogonal deviations in blocks in average.
+        # Block 2 has smaller parallel deviations than in blocks 1&3, equal to orthogonal deviations in blocks in 
+        # average.
         # No synergy.
         block2 = pd.DataFrame({'user': 2, 'block': 2,
                             'parallel': np.random.normal(0.0, 1.0, size=n_trials[2]),
                             'orthogonal': np.random.normal(0.0, 1.0, size=n_trials[2])})
         df2 = pd.concat((block1, block2, block3), axis='index')
+        
+        # ++++++++++++++++++++++++++++++++++++
+        # ++ Model 5 conform data           ++
+        # ++++++++++++++++++++++++++++++++++++
+        # Create some data conforming to M5: parallel > orthogonal deviation across blocks.
+        n_trials = 90 - np.random.randint(36)
+        df5 = pd.DataFrame({'user': 5, 'block': 1 + np.random.randint(3, size=n_trials),
+                            'parallel': np.random.normal(0.0, 5.0, size=n_trials),
+                            'orthogonal': np.random.normal(0.0, 3.0, size=n_trials)})
+        
         # Have one dataset with each user representing a model.
-        df = pd.concat((df0, df1, df2), axis='index')
+        df = pd.concat((df0, df1, df2, df5), axis='index')
         return df
     
     @pytest.fixture(scope='class')
