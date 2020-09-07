@@ -140,27 +140,22 @@ norm_dVz = df.groupby('task')['dVz'].apply(lambda x: pg.normality(x).iloc[0]).un
 # 
 
 # %%
-# Since there's a bug in pingouin 0.3.7, we have to avoid categorical variables for now.
-df[['user', 'block', 'condition']] = df[['user', 'block', 'condition']].astype(object)
-
-anova_dVz = pg.mixed_anova(data=df, dv='dVz', within='block', subject='user', between='condition', correction=True)
+anova_dVz = analysis.mixed_anova_synergy_index_z(df)
 
 # %% [markdown]
-# There's evidence for a main effect of block on the synergy index with the effect accounting for 39% of variability 
-# (partial eta squared/np2) in the index for this sample.
-# 
-# Todo: Compare effect size with other research in that domain**_
-# 
 # ## Posthoc Testing
 
 # %%
 posthoc_comparisons = analysis.posthoc_ttests(df)
 
-# %% [markdown]
-# The synergy index in block 2 is different from blocks 1 and 3 as was expected after visual inspection of the data.
-# The synergy index is on average smaller in block 2.
-# 
-# Todo: How to interpret hedges effect size?**_
+# %%
+dVz_export = df[['user', 'condition', 'block', 'dVz']]\
+             .set_index(['user', 'condition', 'block'])\
+             .unstack(level='block')\
+             .reset_index(level='condition')
+dVz_export.columns = [f"{dVz_export.columns.names[1]}{col}" if col else "condition" 
+                      for col in dVz_export.columns.get_level_values('block')]
+
 # %% [markdown]
 # ### Save Reports
 
@@ -181,6 +176,10 @@ logging.info(f"Written report to {out_file.resolve()}")
 
 out_file = reports_path / 'posthoc-dVz.csv'
 posthoc_comparisons.to_csv(out_file, index=False)
+logging.info(f"Written report to {out_file.resolve()}")
+
+out_file = reports_path / 'dVz-export.csv'
+dVz_export.to_csv(out_file)
 logging.info(f"Written report to {out_file.resolve()}")
 
 # Save figures.
