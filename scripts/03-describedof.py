@@ -43,6 +43,8 @@ df[['user', 'session', 'block', 'block_id', 'condition', 'task']] = df[['user', 
 # When we view statistics by task, we want them to to be displyed in a certain order.
 task_display_order = ['pre', 'df1', 'df2', 'df1|df2', 'post']
 df.task.cat.reorder_categories(task_display_order, inplace=True)
+condition_display_order = ['df1', 'df2', 'df1|df2']
+df.condition.cat.reorder_categories(condition_display_order, inplace=True)
 
 # %% [markdown]
 # ## Analysis of Slider Usage
@@ -129,13 +131,13 @@ df_block_stats[['df1 std', 'df2 std']] = df_block_stats[['df1 variance', 'df2 va
 # Convert to long format for easier plotting.
 df_block_stats_long = analysis.wide_to_long(df_block_stats, stubs=['df1', 'df2'], suffixes=['mean', 'std'], j='dof')
 fig_dof_line = plot.generate_lines_plot(df_block_stats_long, "mean", by='user', color_col='dof', errors='std',
-                                        jitter=True, width=1000)
+                                        jitter=True, category_orders={'condition': condition_display_order}, width=1000)
 
 # %% [markdown]
 # ### Across Participants
 
 # %%
-fig_dof_line2 = sns.catplot(x="Block", y="Mean", hue="DoF", col="condition", 
+fig_dof_line2 = sns.catplot(x="Block", y="Mean", hue="DoF", col="condition", col_order=condition_display_order, 
                             data=df_block_stats_long.rename(columns={'mean': 'Mean', 'block': 'Block', 'dof': 'DoF'}),
                             kind="point", dodge=True, width=10, aspect=.7,
                             palette={'df1': 'cornflowerblue','df2': 'palevioletred'})

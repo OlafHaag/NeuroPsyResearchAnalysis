@@ -528,7 +528,8 @@ def generate_lines_plot(dataframe, y_var, errors=None, by='user', facets='condit
                       line_group=by, facet_col=facets, facet_col_wrap=0, color=color_col, color_discrete_map=theme,
                       hover_data=hover_data, labels={'block_': 'block', 'task_': 'task'},
                       range_x=x_range,
-                      render_mode='webgl')
+                      render_mode='webgl', 
+                      **layout_kwargs)
         fig.update_xaxes(title="Block", tickvals=dataframe['block'].unique())
     except (KeyError, ValueError) as e:
         fig = go.Figure()
@@ -543,7 +544,7 @@ def generate_lines_plot(dataframe, y_var, errors=None, by='user', facets='condit
     fig.layout.update(yaxis_title=y_var.capitalize(),
                       legend=legend,
                       margin=theme['graph_margins'],
-                      **layout_kwargs,
+                      
                       )
     return fig
 

@@ -54,13 +54,15 @@ df.condition.cat.reorder_categories(condition_display_order, inplace=True)
 
 # %%
 df_long = analysis.wide_to_long(df, ['parallel', 'orthogonal'], suffixes='variance', j='projection')
-fig_proj_line = plot.generate_lines_plot(df_long, "variance", by='user', color_col='projection', width=1000)
+fig_proj_line = plot.generate_lines_plot(df_long, "variance", by='user', color_col='projection',
+                                         category_orders={'condition': condition_display_order}, width=1000)
 
 # %% [markdown]
 # ### Across participants
 
 # %%
-fig_proj_line2 = sns.catplot(x="Block", y="Variance", hue="Projection", col="condition",
+fig_proj_line2 = sns.catplot(x="Block", y="Variance", hue="Projection", col="condition", 
+                             col_order=condition_display_order,
                              data=df_long.rename(columns={'variance': 'Variance', 
                                                           'block': 'Block',
                                                           'projection': 'Projection'}),
