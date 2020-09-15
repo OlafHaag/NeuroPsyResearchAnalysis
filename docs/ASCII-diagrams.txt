@@ -1,0 +1,165 @@
+Several predictions about variance structure illustrated as diagrams of ASCII symbols.
+
+    Main Effect Projection  Main Effect Block2    Main Effects Projection + Block2
+    sigma                   sigma                 sigma
+    ^                       ^                     ^     o        o - parallel
+    |                       |                     |    / \       x - orthogonal
+    | o__o__o               |     o               |   /   \
+    |                       |    /x\              |  /  x  \
+    |                       |   // \\             | o  / \  o
+    |                       |  //   \\            |   /   \
+    | x__x__x               | //     \\           |  /     \
+    |                       |ox       ox          | x       x
+    |----------> block      |------------> block  |------------> block
+      1  2  3                 1   2   3            1   2   3
+
+    Block x Projection v1   Block x Proj. v2      Block x Projection v3
+    sigma                   sigma                 sigma
+    ^                       ^                     ^
+    |o       o              | o       o           | o
+    | \     /               |  \     /            |  \
+    |  \   /                |   \   /             |   \
+    |   \o/                 |    \ /              |    \
+    |   /x\                 |     V               |     o___o
+    |  /   \                |     o               |
+    | x     x               | x___x___x           | x___x___x
+    |----------> block      |------------> block  |------------> block
+      1  2  3                 1   2   3             1   2   3
+
+    Block x Projection v4   Null Model      
+    sigma                   sigma                 
+    ^                       ^                     
+    |                       |            
+    |                       |            
+    | o__o__o               |            
+    |    x                  |            
+    |   / \                 | xo__xo__xo 
+    |  /   \                |            
+    | x     x               |            
+    |----------> block      |------------> block  
+      1  2  3                 1   2   3           
+    
+
+    Block2 x Projection v1  Block2 x Proj. v2     Main Effects Block2 + Projection
+    sigma                   sigma                 sigma o
+    ^                       ^                     ^
+    |                       |                     |     oo         o - parallel
+    |                       |         o           |     o          x - orthogonal
+    | oo      o             | oo      o           | oo      o
+    | o       oo            | o       o           |         oo
+    |     oo                |                     | o   xx
+    |     xox               |                     |     x
+    | x   x                 | x   oo  xx          | x
+    | xx      xxx           | xx  xxx x           | xx      xxx
+    |------------> block    |------------> block  |------------> block
+      1   2   3               1   2   3             1   2   3
+
+
+### Hierarchical Linear Model ###
+
+        Block x Projection v1
+        sigma
+        ^                            x - Block 1
+        |                            o - Block 2
+        |                x       #   # - Block 3
+        |                xx      #
+        |                        #
+        |      oo            oo
+        |  xx  o   #         o
+        |  x       ##
+        |--------------------------->
+    Block  1   2   3     1   2   3
+           orthogonal     parallel
+    code       0             1
+
+
+        Main Effect Projection  Main Effect Block2    Main Effects Projection + Block2
+        sigma                   sigma                 sigma  / b2    
+        ^                       ^                     ^     /        
+        |      / b123           |                     |    /         
+        |     /               i2|_________b2          |   /  / b13   
+        |    /                  |                     |  /  /        
+        |   /                   |                     | /  /         
+        |  /                    |                   i2|/  /          
+        | /                     |                     |  /           
+    i123|/                   i13|_________b13         | /            
+        |                       |                  i13|/             
+        |---------->            |---------->          |---------->   
+        0      1                0      1              0      1       
+        ortho  parallel         ortho  parallel       ortho  parallel
+
+        Block x Projection v1   Block x Proj. v2      Block x Projection v3
+        sigma                   sigma                 sigma          
+        ^                       ^                     ^              
+        |      / b13            |      / b13          |      / b1    
+        |     /                 |     /               |     /        
+        |    /                  |    /                |    /         
+      i2|___/___ b2             |   /                 |   /          
+        |  /                    |  /                  |  /           
+        | /                     | /                   | /            
+     i13|/                  i123|/______ b2       i123|/______ b23   
+        |                       |                     |              
+        |---------->            |---------->          |---------->   
+        0      1                0      1              0      1       
+        ortho  parallel         ortho  parallel       ortho  parallel
+
+        Block x Projection v4   Null Model
+        sigma                   sigma          
+        ^                       ^              
+      i2|______                 |              
+        | b2  /                 |              
+        |    /                  |              
+        |   / b13               |              
+        |  /                i123|________      
+        | /                     |  b123        
+     i13|/                      |              
+        |                       |              
+        |---------->            |---------->   
+        0      1                0      1       
+        ortho  parallel         ortho  parallel
+
+
+    Main Effect Projection:
+        intercepts and slopes are fixed
+        b1 = b2 = b3 > 0
+        i1 = i2 = i3
+
+    Main Effect Block2:
+        b1 = b2 = b3 (fixed slopes)
+        i2 > i1, i3
+        i3 - i1 = 0
+
+    Main Effects Projection + Block2:
+        i2 > i1, i3
+        b1 = b2 = b3
+
+    Block x Projection v1:
+        i3 - i1 = 0
+        i2 > i1, i3
+        b3 - b1 = 0
+        b3, b1 > 0
+        b3 > i2 - i3
+        b1 > i2 - i1
+        b2 = 0
+
+    Block x Proj. v2:
+        i1 = i2 = i3
+        b1, b3 > 0
+        b3 - b1 = 0
+        b2 = 0
+
+    Block x Projection v3:
+        i1 = i2 = i3
+        b1 > 0
+        b2 = b3 = 0
+
+    Block x Projection v4:
+        i1 = i3
+        i2 > i1, i3
+        b2 = 0
+        b1 = i2 - i1
+        b3 = i2 - i3
+
+    Null Model:
+        i1 = i2 = i3
+        b1 = b2 = b3 = 0
