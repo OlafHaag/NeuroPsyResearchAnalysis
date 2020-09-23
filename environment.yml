@@ -15,7 +15,7 @@ dependencies:
   - scipy
   - statsmodels
   - scikit-learn
-  - pingouin>=3.8
+  - pingouin>=0.3.8
   - plotly
   - python-kaleido
   - Matplotlib
