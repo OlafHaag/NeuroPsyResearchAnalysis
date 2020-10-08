@@ -270,7 +270,84 @@ def generate_histograms(dataframe, by=None, x_title="", legend_title=None, **lay
     return fig
 
 
-def generate_pca_figure(dataframe, **layout_kwargs):
+def generate_histogram_rows(dataframe, x_title="", rows='task', legend_title=None, **layout_kwargs):
+    """ Plot distributions of data by value given by 'rows'.
+
+    :param dataframe: Data.
+    :type dataframe: pandas.DataFrame
+    :param x_title: X-axis title, unit of measurement, defaults to "".
+    :type x_title: str, optional
+    :param rows: Column name in data by which to split into rows, defaults to "task".
+    :type rows: str, optional
+    :param legend_title: Title of the legend, defaults to None.
+    :type legend_title: [None, str], optional
+    """
+    fig = px.histogram(dataframe,
+                       barmode='overlay',
+                       histnorm='probability density',
+                       facet_row=rows,
+                       opacity=0.7,
+                       category_orders={'condition':['df1', 'df2', 'df1|df2'],
+                                        'task':task_order.index.tolist()},
+                       color_discrete_map=theme)
+    legend = go.layout.Legend(
+                            xanchor='left',
+                            yanchor='top',
+                            orientation='v',
+                            title=legend_title
+                            )
+    fig.update_layout(xaxis_title=x_title, legend=legend, margin=theme['graph_margins'])
+    fig.update_xaxes(hoverformat='.2f')
+    fig.update_yaxes(hoverformat='.2f', title="")
+    fig.update_layout(
+                      # keep the original annotations and add a list of new annotations:
+                      annotations = list(fig.layout.annotations) + 
+                      [go.layout.Annotation(x=-0.1,
+                                            y=0.5,
+                                            font=dict(
+                                                size=14
+                                            ),
+                                            showarrow=False,
+                                            text="Probalitiy Density",
+                                            textangle=-90,
+                                            xref="paper",
+                                            yref="paper"
+                                           )
+                      ]
+                      )
+    return fig
+
+
+def generate_means_scatterplot(dataframe, **layout_kwargs):
+    """[summary]
+
+    :param dataframe: [description]
+    :type dataframe: [type]
+    """
+    legend = go.layout.Legend(
+        xanchor='right',
+        yanchor='top',
+        orientation='v',
+        title="Task",
+    )
+    
+    if dataframe.empty:
+        fig = go.Figure()
+        fig.update_xaxes(range=[0, 100])
+        fig.update_yaxes(range=[0, 100])
+    else:
+        fig = px.scatter(dataframe, x='meanx', y='meany', symbol='task', color='user',
+                         hover_data=['task', 'user', 'meanx', 'meany'])
+
+    fig.update_xaxes(hoverformat='.2f')
+    fig.update_yaxes(hoverformat='.2f')
+    fig.update_layout(yaxis_scaleanchor='x',
+                      yaxis_scaleratio=1,
+                      **layout_kwargs)
+    
+    return fig
+
+def generate_pca_figure(dataframe, value='var_expl_ratio', error=None, **layout_kwargs):
     """ Plot explained variance by principal components as Bar plot with cumulative explained variance.
     
     :param dataframe: Results of PCA.
@@ -287,21 +364,22 @@ def generate_pca_figure(dataframe, **layout_kwargs):
     
     layout = dict(
         legend=legend,
-        yaxis={'title': 'Explained variance in percent'},
+        yaxis={'title': 'Explained Variance in Percent'},
         xaxis={'title': 'Task'},
         margin={'l': 60, 'b': 40, 't': 40, 'r': 10},
-        hovermode=False,
+        #hovermode=False,
     )
     
     try:
-        fig = px.bar(dataframe, x='task', y='var_expl_ratio', barmode='group', color='PC',
+        fig = px.bar(dataframe, x='task', y=value, error_y=error, barmode='group', color='PC',
                      category_orders={
                          'task': list(task_order[dataframe['task'].unique()].sort_values().index)
                      })
     except (KeyError, ValueError):
         fig = go.Figure()
     else:
-        fig.update_traces(texttemplate='%{y:.2f}%', textposition='outside')
+        fig.update_yaxes(hoverformat='.2f')
+        #fig.update_traces(texttemplate='%{y:.2f}%', textposition='outside')
     finally:
         fig.layout.update(**layout, **layout_kwargs)
     
@@ -459,7 +537,7 @@ def generate_violin_figure(dataframe, columns, ytitle, legend_title=None, **layo
     fig.update_layout(violingap=0, violingroupgap=0, violinmode='overlay', hovermode='closest', **layout_kwargs)
     fig.update_xaxes(tickvals=task_order[dataframe['task'].unique()],
                      ticktext=task_order[dataframe['task'].unique()].index)
-    fig.update_yaxes(zeroline=True, zerolinewidth=2, zerolinecolor='LightPink')
+    fig.update_yaxes(hoverformat='.2f', zeroline=True, zerolinewidth=2, zerolinecolor='LightPink')
     return fig
 
 

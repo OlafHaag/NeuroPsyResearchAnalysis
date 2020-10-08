@@ -152,6 +152,15 @@ def get_outlyingness(data, contamination=0.1):
     #ToDo: remove sessions with less than 10 trials in any block.
 
 
+def get_performance_data(dataframe):
+    """[summary]
+
+    :param dataframe: [description]
+    :type dataframe: [type]
+    """
+    dataframe.groupby(['user', 'block', 'task'])[['df1', 'df2']].mean().dropna().sort_index(level=['user','block'])
+
+
 def get_pca_data(dataframe):
     """ Conduct Principal Component Analysis on 2D dataset.
     

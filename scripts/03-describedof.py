@@ -35,12 +35,14 @@ data_path = Path.cwd() / 'data/preprocessed'
 reports_path = Path.cwd() / 'reports'
 
 trials_filepath = data_path / 'trials.csv'
-df = pd.read_csv(trials_filepath, index_col='id')
+df = pd.read_csv(trials_filepath, index_col='id', dtype={'outlier': bool, 'exclude': bool})
+# Clear outliers and excluded trials.
+df = df.loc[~(df['outlier'] | df['exclude'])].drop(['outlier', 'exclude'], axis='columns')
 # Easier on memory and faster groupby.
 df[['user', 'session', 'block', 'block_id', 'condition', 'task']] = df[['user', 'session', 'block', 'block_id', 
                                                                         'condition', 'task']].astype('category')
 
-# When we view statistics by task, we want them to to be displyed in a certain order.
+# When we view statistics by task, we want them to to be displayed in a certain order.
 task_display_order = ['pre', 'df1', 'df2', 'df1|df2', 'post']
 df.task.cat.reorder_categories(task_display_order, inplace=True)
 condition_display_order = ['df1', 'df2', 'df1|df2']
@@ -123,7 +125,8 @@ final_state_stats = df.groupby('task')[['df1', 'df2']].describe().stack(level=0)
 # ###   Per degree of freedom and participant. Vertical bars represent standard deviations.
 
 # %%
-df_block_stats = pd.read_csv(reports_path / 'block_stats.csv', index_col='block_id')
+df_block_stats = pd.read_csv(reports_path / 'block_stats.csv', index_col='block_id', dtype={'exclude': bool})
+df_block_stats = df_block_stats.loc[~df_block_stats['exclude']].drop('exclude', axis='columns')
 
 # %%
 # Add standard deviation for use in plots.

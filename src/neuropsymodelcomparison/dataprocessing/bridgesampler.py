@@ -37,7 +37,8 @@ def marginal_llk(mtrace, model=None, logp=None, maxiter=1000):
         logp = model.logp_array
         
     # free_RVs might be autotransformed. 
-    # if that happens, there will be a model.deterministics entry with the first part of the name that needs to be used instead of the autotransformed name below in stats.ess
+    # if that happens, there will be a model.deterministics entry with the first part of the name that needs to be used 
+    # instead of the autotransformed name below in stats.ess
     # so we need to replace that variable with the corresponding one from the deterministics
     vars = model.free_RVs
     det_names=[d.name for d in model.deterministics]

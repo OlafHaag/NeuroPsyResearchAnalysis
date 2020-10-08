@@ -36,7 +36,9 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 data_path = Path.cwd() /'reports/block_stats.csv'
 figures_path = Path.cwd() /'reports/figures'
 
-df = pd.read_csv(data_path, index_col='block_id')
+df = pd.read_csv(reports_path / 'block_stats.csv', index_col='block_id', dtype={'exclude': bool})
+df = df.loc[~df['exclude']].drop('exclude', axis='columns')
+
 # Easier on memory and faster groupby.
 df[['user', 'session', 'block', 'condition', 'task']] = df[['user', 'session', 'block', 
                                                             'condition', 'task']].astype('category')

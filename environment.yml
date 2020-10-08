@@ -33,6 +33,7 @@ dependencies:
   - pytest-cov
   - autopep8
   - jupyterlab
+  - jupyter_contrib_nbextensions
   - pip:
       - astroid
       - isort

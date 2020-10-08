@@ -40,7 +40,7 @@ df = pd.read_csv(trials_filepath, index_col='id')
 df[['user', 'session', 'block', 'block_id', 'condition', 'task']] = df[['user', 'session', 'block', 'block_id', 
                                                                         'condition', 'task']].astype('category')
 
-# When we view statistics by task, we want them to to be displyed in a certain order.
+# When we view statistics by task, we want them to to be displayed in a certain order.
 task_display_order = ['pre', 'df1', 'df2', 'df1|df2', 'post']
 df.task.cat.reorder_categories(task_display_order, inplace=True)
 
@@ -81,14 +81,9 @@ trials_count_threshold = int(trials_total_count * trials_proportion_theshold)
 # Keep track of how many sessions there are before filtering.
 n_sessions = df.groupby(['user', 'session'], observed=True).ngroups
 
-# Filter outliers
-df = df[~df['outlier']]
-df.drop(columns=['outlier'], inplace=True)
-
-
 # %%
 # Aggregate valid trial counts.
-df_counts = df.groupby(['user', 'session', 'block_id', 'block', 'condition'], observed=True)\
+df_counts = df.loc[~df['outlier']].groupby(['user', 'session', 'block_id', 'block', 'condition'], observed=True)\
               .size().rename('valid trials count').reset_index()
 
 # Display some more information about users.
@@ -104,7 +99,9 @@ df_counts['rating'] = df_counts['block_id'].map(blocks['rating'])
 # %%
 # Bar plot.
 fig_exclusions = px.bar(df_counts, x='user', y='valid trials count', color='block', barmode='group', opacity=0.9, 
-                        hover_data=['condition', 'gender', 'age_group', 'gaming_exp', 'rating'], width=1000)
+                        hover_data=['condition', 'gender', 'age_group', 'gaming_exp', 'rating'],
+                        labels=dict(zip(df_counts.columns, df_counts.columns.str.title())),
+                        width=1000)
 fig_exclusions.update_layout(bargap=0.3, bargroupgap=0.01)
 
 # Add threshold.
@@ -140,17 +137,23 @@ fig_exclusions.update_layout(legend=dict(
 
 
 # %%
-# Remove sessions with insufficient data from dataframe.
-df = df.groupby(['user', 'session'], observed=True)\
-       .filter(lambda x: (x['block'].value_counts() >= trials_count_threshold).all())
-n_sessions_excluded_by_trials_count = n_sessions - df.groupby(['user', 'session']).ngroups
+# Mark sessions with insufficient data from dataframe.
+df['exclude'] = (df.set_index(['user', 'session'])
+                   .index.map(~df.loc[~df['outlier']].groupby(['user', 'session'], observed=True)
+                                           .apply(lambda x: (x['block'].value_counts() >= trials_count_threshold).all())
+                             )
+                )
+# For some unknown reason we have to assign bool dtype after creating the column.
+# Doing it on the left side of above assignment didn't stick.
+df['exclude'] = df['exclude'].astype(bool)
+n_sessions_excluded_by_trials_count = n_sessions - df.loc[~df['exclude']].groupby(['user', 'session']).ngroups
 
 # %% [markdown]
 # ## Describe Remaining Sample
 # Show demographic characteristics of remaining sample.
 
 # %%
-users = users.loc[users.index.isin(df['user'].unique()), :]
+users = users.loc[users.index.isin(df.loc[~df['exclude'], 'user'].unique()), :]
 print("Gender Distribution:\n")
 print(users['gender'].value_counts(dropna=False), "\n")
 print("Age Distribution:\n")
@@ -164,7 +167,7 @@ print(users['age_group'].value_counts(dropna=False))
 # %%
 # Calculate projections onto vectors parallel and orthogonal to UCM.
 ucm_vec = analysis.get_ucm_vec()
-projections = df.groupby(['user', 'session', 'task'], observed=True)[['df1', 'df2']]\
+projections = df.loc[~df['outlier']].groupby(['user', 'session', 'task'], observed=True)[['df1', 'df2']]\
                 .apply(analysis.get_projections, ucm_vec)
 df = pd.concat([df, projections], axis='columns')
 
@@ -173,12 +176,13 @@ df = pd.concat([df, projections], axis='columns')
 # per participant
 
 # %%
-df_stats = analysis.get_statistics(df)
+df_stats = analysis.get_statistics(df.dropna())
 # Flatten hierarchical columns.
 df_stats.columns = [" ".join(col).strip() for col in df_stats.columns.to_flat_index()]
 df_stats.reset_index(inplace=True)
 # Add users' rating of block's difficulty.
 df_stats['rating'] = df_stats['block_id'].map(df_counts.set_index('block_id')['rating']).astype(int)
+df_stats['exclude'] = df.drop_duplicates(subset=['user', 'session', 'block'])['exclude'].values
 
 # %% [markdown]
 # ## Save Data
@@ -188,6 +192,21 @@ df_stats['rating'] = df_stats['block_id'].map(df_counts.set_index('block_id')['r
 destination_path = data_path / 'preprocessed'
 df.to_csv(destination_path / 'trials.csv')
 logging.info(f"Written preprocessed trials data to {(destination_path / 'trials.csv').resolve()}")
+
+# Save final state position and projection in long format.
+df_long = df.melt(id_vars=['user', 'session', 'condition', 'block_id', 'block', 'trial', 'exclude'],
+                  value_vars=['df1', 'df2'],
+                  var_name='dof', value_name='value')
+df_long.to_csv(destination_path / 'dof_long.csv')
+logging.info(f"Written preprocessed degrees of freedom final states in long format to 
+               {(destination_path / 'dof_long.csv').resolve()}")
+
+projections_long = df.loc[~df['outlier']].melt(id_vars=['user', 'session', 'condition',
+                                                        'block_id', 'block', 'trial', 'exclude'],
+                                               value_vars=['parallel', 'orthogonal'],
+                                               var_name='direction', value_name='projection')
+projections_long.to_csv(destination_path / 'projections.csv')
+logging.info(f"Written projection data in long format to {(destination_path / 'projections.csv').resolve()}")
 
 reports_path = Path.cwd() / 'reports'
 stats_path = reports_path / 'block_stats.csv'
