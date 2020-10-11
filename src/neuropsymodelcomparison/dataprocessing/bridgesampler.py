@@ -2,7 +2,7 @@
 # Based on https://github.com/quentingronau/bridgesampling/blob/master/R/bridge_sampler_normal.R
 # unittests and adaptation to pymc3 version 
 
-import pymc3
+import pymc3 as pm
 from pymc3.model import modelcontext
 from scipy import dot
 from scipy.linalg import cholesky as chol
@@ -10,7 +10,6 @@ import warnings
 import numpy as np
 import scipy.stats as st
 import scipy.special as spf
-import theano.tensor as tt
 
 import unittest
 
@@ -70,18 +69,16 @@ def marginal_llk(mtrace, model=None, logp=None, maxiter=1000):
         varmap = model.bijection.ordering.by_name[var.name]
         # for fitting the proposal
         x = mtrace[:N1_][var.name]
-        samples_4_fit[varmap.slc, :] = x.reshape((x.shape[0], 
-                                                  np.prod(x.shape[1:], dtype=int))).T
+        samples_4_fit[varmap.slc, :] = x.reshape((x.shape[0], np.prod(x.shape[1:], dtype=int))).T
         # for the iterative scheme
         x2 = mtrace[N1_:][var.name]
-        samples_4_iter[varmap.slc, :] = x2.reshape((x2.shape[0], 
-                                                    np.prod(x2.shape[1:], dtype=int))).T
+        samples_4_iter[varmap.slc, :] = x2.reshape((x2.shape[0], np.prod(x2.shape[1:], dtype=int))).T
         # effective sample size of samples_4_iter, scalar
         orig_name=recover_var_name(var.name)
-        neff_list.update(pymc3.stats.ess(mtrace[N1_:],var_names=[orig_name]))
+        neff_list.update(pm.stats.ess(mtrace[N1_:], var_names=[orig_name]))
 
     # median effective sample size (scalar)
-    neff = np.median(list(neff_list.values()))
+    neff = np.median(np.concatenate([x.values.reshape((1,)) if x.shape==() else x for x in neff_list.values()]))
     
     # get mean & covariance matrix and generate samples from proposal
     m = np.mean(samples_4_fit, axis=1)
@@ -89,8 +86,7 @@ def marginal_llk(mtrace, model=None, logp=None, maxiter=1000):
     L = chol(V, lower=True)
 
     # Draw N2 samples from the proposal distribution
-    gen_samples = m[:, None] + np.dot(L, st.norm.rvs(0, 1, 
-                                         size=samples_4_iter.shape))
+    gen_samples = m[:, None] + np.dot(L, st.norm.rvs(0, 1, size=samples_4_iter.shape))
 
     # Evaluate proposal distribution for posterior & generated samples
     q12 = st.multivariate_normal.logpdf(samples_4_iter.T, m, V)
@@ -171,11 +167,11 @@ class TestBridgeSampler(unittest.TestCase):
         
         observations=(np.random.random(n)<=p0).astype("int")
         
-        with pymc3.Model() as BernoulliBeta:
+        with pm.Model() as BernoulliBeta:
     
-            theta=pymc3.Beta('pspike',alpha=alpha,beta=beta)
-            obs=pymc3.Categorical('obs',p=tt.stack([theta,1.0-theta]),observed=observations)
-            trace=pymc3.sample(draws=draws,tune=tune)
+            theta=pm.Beta('pspike',alpha=alpha,beta=beta)
+            obs=pm.Categorical('obs',p=pm.math.stack([theta, 1.0-theta]),observed=observations)
+            trace=pm.sample(draws=draws,tune=tune)
 
         # calculate exact marginal likelihood
         n=len(observations)
@@ -218,12 +214,12 @@ class TestBridgeSampler(unittest.TestCase):
         
         observations=np.random.normal(mu0,1.0/np.sqrt(p),size=n)
         
-        with pymc3.Model() as GaussGaussGamma:
+        with pm.Model() as GaussGaussGamma:
             
-            prec=pymc3.Gamma('precision',alpha=nu,beta=1.0/S)
-            mean=pymc3.Normal('mean',mu=mu_prior,tau=beta*prec)
-            obs=pymc3.Normal('observations',mu=mean,tau=prec,observed=observations)
-            trace=pymc3.sample(draws=draws,tune=tune)
+            prec=pm.Gamma('precision',alpha=nu,beta=1.0/S)
+            mean=pm.Normal('mean',mu=mu_prior,tau=beta*prec)
+            obs=pm.Normal('observations',mu=mean,tau=prec,observed=observations)
+            trace=pm.sample(draws=draws,tune=tune)
         
         estimated_mean=trace["mean"].mean()
         estimated_precision=trace["precision"].mean()
