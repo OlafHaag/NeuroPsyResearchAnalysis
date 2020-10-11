@@ -197,10 +197,10 @@ logging.info(f"Written preprocessed trials data to {(destination_path / 'trials.
 df_long = df.melt(id_vars=['user', 'session', 'condition', 'block_id', 'block', 'trial', 'exclude'],
                   value_vars=['df1', 'df2'],
                   var_name='dof', value_name='value')
-dof_long.index.rename('id', inplace=True)
+df_long.index.rename('id', inplace=True)
 df_long.to_csv(destination_path / 'dof_long.csv')
-logging.info(f"Written preprocessed degrees of freedom final states in long format to 
-               {(destination_path / 'dof_long.csv').resolve()}")
+logging.info("Written preprocessed degrees of freedom final states in long format to "
+             f"{(destination_path / 'dof_long.csv').resolve()}")
 
 projections_long = df.loc[~df['outlier']].melt(id_vars=['user', 'session', 'condition',
                                                         'block_id', 'block', 'trial', 'exclude'],
