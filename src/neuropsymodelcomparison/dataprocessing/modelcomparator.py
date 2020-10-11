@@ -6,9 +6,9 @@
 from pathlib import Path
 from typing import Union
 
-#import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import patsy
 import pymc3 as pm
 
 from . import bridgesampler
@@ -18,12 +18,13 @@ class ModelComparison:
     """ Compare probabilities of models given data of projections onto vectors parallel and orthogonal to the UCM.
     
     * Model 0: All variances are equal in all blocks, but unknown. The null-model, no effect.
-    * Model 1: Synergy affects task performance by increasing precision.
-    * Model 2: Synergy has no effect on task performance.
-    * Model 3: Priming/Learning effect after constrained task.
+    * Model 1: Main effect of projection (parallel > orthogonal).
+    * Model 2: Main effect of treatment (block 2 > block 1&3).
+    * Model 3: Both main effects.
     * Model 4: Extraneous cognitive load / split-attention-effect leads to bad performance in constrained task.
-    * Model 5: Main effect of projection (parallel > orthogonal).
-    * Model 6: Main effect of treatment (block 2 > block 1&3).
+    * Model 5: Synergy affects task performance by increasing precision.
+    * Model 6: Synergy has no effect on task performance.
+    * Model 7: Priming/Learning effect after constrained task.
     """
 
     def __init__(self, df_projections, min_samples=20):
@@ -32,6 +33,7 @@ class ModelComparison:
         :type df_projections: pandas.DataFrame
         :param min_samples: Minimum number of samples per block for each user.
                             Users will be excluded if they don't meet requirement.
+                            As we don't partially pool across users, this threshold should prevent absurd estimations.
         :type min_samples: int
         """
         # Preprocess data.
@@ -40,8 +42,7 @@ class ModelComparison:
         # TODO: find good parameter values for sampling. Acceptance rate with NUTS should be around 0.8
         # Higher acceptance rate than 0.8 for proposed parameters is not better!
         # It just means we're not getting closer to a local maximum and are still climbing up the hill.
-        self.draws = 2000
-        self.tune = 2000
+        self.sample_params = dict()
         self.model_funcs = [self.get_model_0,
                             self.get_model_1,
                             self.get_model_2,
@@ -49,6 +50,7 @@ class ModelComparison:
                             self.get_model_4,
                             self.get_model_5,
                             self.get_model_6,
+                            self.get_model_7,
                             ]
         self.traces = {user: dict() for user in self.df['user'].unique()}
         # ToDo: The priors are the shape and scale parameters, or mu and sigma of the Gamma distributions.
@@ -56,7 +58,6 @@ class ModelComparison:
         self.posteriors = pd.DataFrame(columns=[f"M{i}" for i in range(len(self.model_funcs))],
                                        index=self.df['user'].unique())
         self.posteriors.rename_axis('user', inplace=True)
-        # ToDo: Consider participant's experience and task difficulty ratings.
 
     def preprocess_data(self, dataframe, min_samples=20):  # Adjust min_samples per block
         """ Prepare incoming data for analysis.
@@ -69,12 +70,13 @@ class ModelComparison:
         :rtype: pandas.DataFrame
         """
         print("Preprocessing data...", end="")
-        df = dataframe.copy()
+        df = dataframe[['user', 'block', 'orthogonal', 'parallel']].copy()  # Keep only these columns.
         try:
             df[['user', 'block']] = df[['user', 'block']].astype('category')
             df.sort_values(by=['user', 'block'], inplace=True)
-            # We need squared deviations.
-            df[['parallel', 'orthogonal']] = df[['parallel', 'orthogonal']].transform('square')
+            # We need log-transformed squared deviations.
+            # Alternatively use Box Cox transformation.
+            df[['orthogonal', 'parallel']] = df[['orthogonal', 'parallel']].transform('square').transform('log')
         except KeyError:
             raise KeyError("Missing columns in dataframe. Make sure it has columns: "
                            "'user', 'block', 'parallel' and 'orthogonal'.")
@@ -91,35 +93,280 @@ class ModelComparison:
         print("Done.")
         return df
     
+    def get_coordinates(self, dataframe):
+        """[summary]
+
+        :param dataframe: [description]
+        :type dataframe: [type]
+        :return: [description]
+        :rtype: [type]
+        """
+        # We need to be able to index by user. But the user IDs of the sample don't start at 0. We create an index and a mapping between them.
+        users = dataframe['user'].cat.categories.tolist()
+        # Block indices for 1,2,3.
+        blocks = dataframe['block'].cat.categories.tolist()
+        # Direction of projection.
+        directions = ['orthogonal', 'parallel']
+        coords = {'Direction': directions,
+                  'User': users,
+                  'Block': blocks,
+                  'obs_id': np.arange(len(dataframe))}
+        return coords
+    
+    def get_indices(self, dataframe):
+        """[summary]
+
+        :param dataframe: [description]
+        :type dataframe: [type]
+        """
+        # Users
+        user_indices = dataframe['user'].cat.codes.values  # User index for every single value.
+        user_lookup = pd.Series(*pd.factorize(dataframe['user'].cat.categories), name='user_idx_lookup')
+        # Blocks
+        block_indices = dataframe['block'].cat.codes.values # Block index for every single value.
+        block_lookup = pd.Series(*pd.factorize(dataframe['block'].cat.categories), name='block_idx_lookup')
+        return user_indices, block_indices
+
+    def get_block_dmatrix(self, dataframe):
+        """[summary]
+
+        :param dataframe: [description]
+        :type dataframe: [type]
+        :raises KeyError: [description]
+        :return: [description]
+        :rtype: [type]
+        """
+        block_mx = patsy.dmatrix('0 + block', dataframe, return_type='dataframe').astype(int)
+        block_mx.columns = dataframe['block'].cat.categories.tolist()
+        return block_mx
+
+    def update_sample_params(self, model_name, draws=1000, tune=800, target_accept=0.8):
+        """[summary]
+
+        :param model_name: [description]
+        :type model_name: [type]
+        :param draws: [description], defaults to 1000
+        :type draws: int, optional
+        :param tune: [description], defaults to 800
+        :type tune: int, optional
+        :param target_accept: [description], defaults to 0.8
+        :type target_accept: float, optional
+        """
+        self.sample_params[model_name] = dict(draws=draws, tune=tune, target_accept=target_accept)
+
     #####################
     # Model Definitions #
     #####################
-    def get_model_0(self, dataframe):
-        """ Compute marginal-log-likelihood of M0: all variances are equal in all blocks, but unknown.
+    def get_model_0(self, dataframe, prior_mu=(0.80, 2.74), prior_sigma=1.0):
+        """ Compute marginal-log-likelihood of M0: all variances are equal in all blocks, but unknown. 
+        For each user all data is generated by the same distribution.
         
         No synergy effects can be observed for this particular bi-manual task.
         
         Prior believe: Unlikely. Synergy effects have been observed time and time again.
         But thumbs could receive independent control signals as they're quite independent in the musculoskeletal system.
         
+        :param prior_mu: Prior parameters for the total mean and its spread (standard error).
+        :type prior_mu: tuple[float]
+        :param prior_sigma: Prior parameters for the mean standard deviation. Lambda of exponential function.
+        :type prior_sigma: float
         :type dataframe: pandas.DataFrame
         :rtype: float
         """
-        with pm.Model() as model:
-            model.name = "Null Model"
-            # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
-            # Both parameters have to be positive, so draw them from a Gamma prior, too.
-            # TODO: Perhaps use the alternative parametrization with mu, sigma instead, once you have the pilot data.
-            mu = pm.Gamma("mu", mu=31.15, sigma=20.83)
-            sigma = pm.Gamma("sigma", mu=120.41, sigma=138.90)
+        coords = self.get_coordinates(dataframe)
 
-            blocks = dataframe.set_index('block').groupby('block')
-            for block, data in blocks:
-                obs = pm.Gamma(f"obs_block{block}_parallel", mu=mu, sigma=sigma, observed=data['parallel'])
-                obs = pm.Gamma(f"obs_block{block}_orthogonal", mu=mu, sigma=sigma, observed=data['orthogonal'])
+        with pm.Model(coords=coords) as model:
+            model.name = "Null Model"
+            # Prior.
+            mu = pm.Normal("mu", mu=prior_mu[0], sigma=prior_mu[1])
+            # Our coordinates aren't in long format, so we need to have the same prior 2 times to cover both directions.
+            theta = pm.math.stack((mu, mu)).T
+            # Model error.
+            sigma = pm.Exponential("sigma", lam=prior_sigma)
+
+            # Observed variable.
+            projection_obs = pm.Data("projection_obs", dataframe[coords['Direction']], dims=('obs_id', 'Direction'))
+            # Using user_idx to index theta somehow tells which prior belongs to which user.
+            projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
+                                   dims=('obs_id', 'Direction'))
+        
+        self.update_sample_params(model.name)  # Use defaults.
         return model
-    
-    def get_model_1(self, dataframe):
+
+    def get_model_1(self, dataframe, 
+                    prior_mu_orthogonal=(0.09, 2.5),
+                    prior_mu_diff=(1.5, 2.5),
+                    prior_sigma=1.0):
+        """ Compute marginal-log-likelihood of M5: Synergy is needed to perform a task.
+        
+        Main effect of projection (parallel > orthogonal).
+        Strong synergies in all the tasks. This model implies a bad performance for the additional goal in the
+        constrained task.
+        
+        Prior believe: Unlikely.
+        
+        :type dataframe: pandas.DataFrame
+        :rtype: float
+        """
+        coords = self.get_coordinates(dataframe)
+
+        with pm.Model(coords=coords) as model:
+            model.name = "Main Effect Projection"
+            # Priors.
+            mu_ortho = pm.Normal('mu_orthogonal', mu=prior_mu_orthogonal[0], sigma=prior_mu_orthogonal[1])
+            # Assume positive difference.
+            mu_diff = pm.Gamma('mu_diff', mu=prior_mu_diff[0], sigma=prior_mu_diff[1])
+            mu_parallel = pm.Deterministic('mu_parallel', mu_ortho + mu_diff)
+
+            # Stack priors.
+            theta = pm.math.stack((mu_ortho, mu_parallel)).T
+            # Model error:
+            sigma = pm.Exponential("sigma", lam=prior_sigma, dims='Direction')
+            # Observed variable.
+            projection_obs = pm.Data("projection_obs", dataframe[coords['Direction']], dims=('obs_id', 'Direction'))
+            # Using user_idx to index theta somehow tells which prior belongs to which user.
+            projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
+                                   dims=('obs_id', 'Direction'))
+
+        self.update_sample_params(model.name)  # Use defaults.
+        return model
+
+    def get_model_2(self, dataframe, prior_mu=(0.09, 2.5), prior_mu_diff=(1.5, 2.5), prior_sigma=1.0):
+        """ Compute marginal-log-likelihood of M6:
+        
+        Main effect of treatment (block 2 > block 1&3).
+        No synergy effects can be observed for this particular bi-manual task. The constrained task (block 2) appears
+        too difficult to coordinate and results in heightened deviations in all directions compared to the
+        unconstrained task (blocks 1&3).
+        
+        Prior believe: Unlikely
+        
+        :type dataframe: pandas.DataFrame
+        :rtype: float
+        """
+        coords = self.get_coordinates(dataframe)
+        block_mx = self.get_block_dmatrix(dataframe)
+
+        with pm.Model(coords=coords) as model:
+            model.name = "Main Effect Block"
+            block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
+            # Blocks 1 an 3.
+            mu_blocks13 = pm.Normal('mu_blocks_1_3', mu=prior_mu[0], sigma=prior_mu[1])
+            # Poisitive difference to Block 2.
+            diff = pm.Gamma('mu_diff', mu=prior_mu_diff[0], sigma=prior_mu_diff[1])
+            mu_block2 = pm.Deterministic('mu_block_2', mu_blocks13 + diff)
+
+            # Expected deviation. block2_idx is either 0 or 1.
+            theta_ = (1 - block2_idx) * mu_blocks13 + block2_idx * mu_block2
+            theta = pm.math.stack((theta_, theta_)).T
+            # Model error:
+            sigma = pm.Exponential("sigma", lam=prior_sigma)
+            # Observed variable.
+            projection_obs = pm.Data("projection_obs", dataframe[coords['Direction']], dims=('obs_id', 'Direction'))
+            # Using user_idx to index theta somehow tells which prior belongs to which user.
+            projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
+                                   dims=('obs_id', 'Direction'))
+        
+        self.update_sample_params(model.name, draws=2000, tune=1200, target_accept=0.95)
+        return model
+
+    def get_model_3(self, dataframe, 
+                    prior_mu_ortho=(0.09, 2.5),
+                    prior_mu_diff_dir=(1.5, 2.5),
+                    prior_mu_diff_block=(1.0, 3.5),
+                    prior_sigma=1.0):
+        """ Compute marginal-log-likelihood of M4: Both main effects, for direction and block.
+                                                   (Extraneous cognitive load I).
+        
+        Constrained task is perceived more difficult by visual instructions. Strong synergy in simpler task.
+        
+        Prior believe: Likely for users with no video-game experience. It's also likely that participants don't figure
+        out the control scheme of df1=df2=target/2, since only one df seems constrained which might get more attention.
+        
+        :type dataframe: pandas.DataFrame
+        :rtype: float
+        """
+        coords = self.get_coordinates(dataframe)
+        block_mx = self.get_block_dmatrix(dataframe)
+
+        with pm.Model(coords=coords) as model:
+            model.name = "2 Main Effects"
+            block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
+            # Blocks 1 an 3.
+            mu_blocks13_ortho = pm.Normal('mu_blocks_1_3_orthogonal', mu=prior_mu_ortho[0], sigma=prior_mu_ortho[1])
+            # Poisitive differences. First for direction, second for block 2.
+            diff = pm.Gamma('mu_diff',
+                            mu=np.array([prior_mu_diff_dir[0], prior_mu_diff_block[0]]),
+                            sigma=np.array([prior_mu_diff_dir[1], prior_mu_diff_block[1]]),
+                            shape=2)
+            
+            mu_block2_ortho = pm.Deterministic('mu_block_2_orthogonal', mu_blocks13_ortho + diff[1])
+            mu_blocks13_para = pm.Deterministic('mu_blocks_1_3_parallel', mu_blocks13_ortho + diff[0])
+            mu_block2_para = pm.Deterministic('mu_block_2_parallel', mu_blocks13_ortho + diff[0] + diff[1])
+            
+            mu_ortho = (1 - block2_idx) * mu_blocks13_ortho + block2_idx * mu_block2_ortho
+            mu_para = (1 - block2_idx) * mu_blocks13_para + block2_idx * mu_block2_para
+            
+            # Model error:
+            sigma = pm.Exponential("sigma", lam=prior_sigma, dims='Direction')
+            # Expected deviation per direction:
+            theta = pm.math.stack((mu_ortho, mu_para)).T
+            # Observed variable.
+            projection_obs = pm.Data("projection_obs", dataframe[coords['Direction']], dims=('obs_id', 'Direction'))
+            # Using user_idx to index theta somehow tells which prior belongs to which user.
+            projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
+                                   dims=('obs_id', 'Direction'))
+        
+        self.update_sample_params(model.name, draws=2000, tune=1200, target_accept=0.95)
+        return model
+
+    def get_model_4(self, dataframe, prior_mu=(0.09, 2.5), prior_mu_diff=(1.5, 2.5), prior_sigma=1.0):
+        """ Compute marginal-log-likelihood of M4: Extraneous cognitive load / split-attention-effect.
+        
+        Constrained task is perceived more difficult by visual instructions. Strong synergy in simpler task.
+        Parallel projection variability stays the same through all blocks. Orthogonal projection variability increases 
+        in block 2.
+        
+        Prior believe: Likely for users with no video-game experience. It's also likely that participants don't figure
+        out the control scheme of df1=df2=target/2, since only one df seems constrained which might get more attention.
+        
+        :type dataframe: pandas.DataFrame
+        :rtype: float
+        """
+        coords = self.get_coordinates(dataframe)
+        block_mx = self.get_block_dmatrix(dataframe)
+
+        with pm.Model(coords=coords) as model:
+            model.name = "Split Attention Effect"
+            block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
+            # Blocks 1 an 3 orthogonal.
+            mu_ortho = pm.Normal('mu_blocks_1_3_orthogonal', mu=prior_mu[0], sigma=prior_mu[1])
+            # Poisitive difference to Block 2 AND parallel.
+            diff = pm.Gamma('mu_diff', mu=prior_mu_diff[0], sigma=prior_mu_diff[1])
+            mu_parallel = pm.Deterministic('mu_parallel', mu_ortho + diff)
+
+            # Expected deviation per direction and block:
+            theta_parallel = mu_parallel * np.ones(len(dataframe))  # Must match shape of orthogonal projections.
+            theta_ortho = (1 - block2_idx) * mu_ortho + block2_idx * mu_parallel  # Raise block 2 orthogonal to parallel
+            theta = pm.math.stack((theta_ortho, theta_parallel)).T
+            
+            # Model error:
+            sigma = pm.Exponential("sigma", lam=prior_sigma, dims='Direction')
+
+            # Observed variable.
+            projection_obs = pm.Data("projection_obs", dataframe[coords['Direction']], dims=('obs_id', 'Direction'))
+            # Using user_idx to index theta somehow tells which prior belongs to which user.
+            projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
+                                   dims=('obs_id', 'Direction'))
+
+        self.update_sample_params(model.name, draws=2000, tune=1200, target_accept=0.8)
+        return model
+
+    def get_model_5(self, dataframe, 
+                    prior_mu=(0.09, 2.5),
+                    prior_mu_diff1=(1.5, 2.5),  # Difference between orthogonal projection block 1 and 3 to block 2.
+                    prior_mu_diff2=(1.5, 2.5),  # Difference between orthogonal projection block 2 to parallel 1 and 3.
+                    prior_sigma=1.0):
         """ Compute marginal-log-likelihood of M1: Synergy affects task performance by increasing precision.
         
         Following predictions made by Todorov (2004), in the constrained task (block 2) the variance in the direction
@@ -134,37 +381,40 @@ class ModelComparison:
         :type dataframe: pandas.DataFrame
         :rtype: float
         """
-        with pm.Model() as model:
+        coords = self.get_coordinates(dataframe)
+        block_mx = self.get_block_dmatrix(dataframe)
+
+        with pm.Model(coords=coords) as model:
             model.name = "Precision dependent on Synergy"
-            # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
-            # Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
-            # variables is gamma-distributed again.
-            scale = pm.Gamma("scale", alpha=1.0, beta=1.0)
-            shape_ortho_1_3 = pm.Gamma("shape", alpha=1.0, beta=1.0)
-            delta_shape_ortho_2 = pm.Gamma("dshape", alpha=1.0, beta=1.0)
-            delta_shape_para_1_3 = pm.Gamma("dshape2", alpha=1.0, beta=1.0)
-
-            # Describe blocks 1&3.
-            for block in [1, 3]:
-                data = dataframe[dataframe['block'] == block]
-                # Blocks 1&3 orthogonal projections have low deviations.
-                obs = pm.Gamma(f"obs_block{block}_orthogonal", alpha=shape_ortho_1_3, beta=scale,
-                               observed=data['orthogonal'])
-                # Parallel projections in blocks 1&3 have even higher deviations than in block 2.
-                obs = pm.Gamma(f"obs_block{block}_parallel",
-                               alpha=shape_ortho_1_3 + delta_shape_ortho_2 + delta_shape_para_1_3, beta=scale,
-                               observed=data['parallel'])
-
-            # Describe block 2.
-            block2 = dataframe[dataframe['block'] == 2]
-            # Block 2 parallel projections have the same average deviation as block 2 orthogonal projections.
-            for projection in ['orthogonal', 'parallel']:
-                # Block 2 orthogonal projections have a higher deviation on average than blocks 1&3.
-                obs = pm.Gamma(f"obs_block2_{projection}", alpha=shape_ortho_1_3 + delta_shape_ortho_2, beta=scale,
-                               observed=block2[projection])
+            block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
+            # Blocks 1 an 3.
+            mu_blocks13_ortho = pm.Normal('mu_blocks_1_3_orthogonal', mu=prior_mu[0], sigma=prior_mu[1])
+            # Poisitive differences. First for direction, second for block 2.
+            diff = pm.Gamma('mu_diff',
+                            mu=np.array([prior_mu_diff1[0], prior_mu_diff2[0]]),
+                            sigma=np.array([prior_mu_diff1[1], prior_mu_diff2[1]]),
+                            shape=2)
+            
+            mu_block2 = pm.Deterministic('mu_block_2', mu_blocks13_ortho + diff[0])
+            mu_blocks13_para = pm.Deterministic('mu_blocks_1_3_parallel', mu_blocks13_ortho + diff[0] + diff[1])
+            # Variability in block 2 shouldbe the same for both directions.
+            theta_ortho = (1 - block2_idx) * mu_blocks13_ortho + block2_idx * mu_block2
+            theta_para = (1 - block2_idx) * mu_blocks13_para + block2_idx * mu_block2
+            
+            # Model error:
+            sigma = pm.Exponential("sigma", lam=prior_sigma, dims='Direction')
+            # Expected deviation per direction:
+            theta = pm.math.stack((theta_ortho, theta_para)).T
+            # Observed variable.
+            projection_obs = pm.Data("projection_obs", dataframe[coords['Direction']], dims=('obs_id', 'Direction'))
+            # Using user_idx to index theta somehow tells which prior belongs to which user.
+            projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
+                                   dims=('obs_id', 'Direction'))
+        
+        self.update_sample_params(model.name, draws=2000, tune=1200, target_accept=0.99)
         return model
     
-    def get_model_2(self, dataframe):
+    def get_model_6(self, dataframe, prior_mu=(0.09, 2.5), prior_mu_diff=(1.5, 2.5), prior_sigma=1.0):
         """ Compute marginal-log-likelihood of M2: Synergy has no effect on task performance.
         
         Orthogonal variances are small in all blocks.
@@ -181,30 +431,40 @@ class ModelComparison:
         :type dataframe: pandas.DataFrame
         :rtype: float
         """
-        with pm.Model() as model:
-            model.name = "Precision independent of Synergy"
-            # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
-            # Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
-            # variables is gamma-distributed again.
-            scale = pm.Gamma("scale", alpha=1.0, beta=1.0)
-            shape_ortho = pm.Gamma("shape", alpha=1.0, beta=1.0)
-            delta_shape_para_1_3 = pm.Gamma("dshape", alpha=1.0, beta=1.0)
+        coords = self.get_coordinates(dataframe)
+        block_mx = self.get_block_dmatrix(dataframe)
 
-            blocks = dataframe.set_index('block').groupby('block')
-            for block, data in blocks:
-                # All blocks' orthogonal projections have low deviations.
-                obs = pm.Gamma(f"obs_block{block}_orthogonal", alpha=shape_ortho, beta=scale,
-                               observed=data['orthogonal'])
-                # Parallel projections in blocks 1&3 have higher deviations than in block 2.
-                if block == 2:
-                    obs = pm.Gamma(f"obs_block{block}_parallel", alpha=shape_ortho, beta=scale,
-                                   observed=data['parallel'])
-                else:
-                    obs = pm.Gamma(f"obs_block{block}_parallel", alpha=shape_ortho + delta_shape_para_1_3, beta=scale,
-                                   observed=data['parallel'])
+        with pm.Model(coords=coords) as model:
+            model.name = "Precision independent of Synergy"
+            block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
+            # Orthogonal projections.
+            mu_ortho = pm.Normal('mu_orthogonal', mu=prior_mu[0], sigma=prior_mu[1])
+            # Poisitive difference to parallel projections in blocks 1 and 3.
+            diff = pm.Gamma('mu_diff', mu=prior_mu_diff[0], sigma=prior_mu_diff[1])
+            mu_parallel_blocks13 = pm.Deterministic('mu_parallel_blocks_1_3', mu_ortho + diff)
+
+            # Expected deviation per direction and block:
+            theta_ortho = mu_ortho * np.ones(len(dataframe))  # Must be same length as theta_parallel for stacking.
+            theta_parallel = block2_idx * mu_ortho + (1 - block2_idx) * mu_parallel_blocks13
+            theta = pm.math.stack((theta_ortho, theta_parallel)).T
+            
+            # Model error:
+            sigma = pm.Exponential("sigma", lam=prior_sigma, dims='Direction')
+
+            # Observed variable.
+            projection_obs = pm.Data("projection_obs", dataframe[coords['Direction']], dims=('obs_id', 'Direction'))
+            # Using user_idx to index theta somehow tells which prior belongs to which user.
+            projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
+                                   dims=('obs_id', 'Direction'))
+
+        self.update_sample_params(model.name, draws=2000, tune=1200, target_accept=0.9)
         return model
 
-    def get_model_3(self, dataframe):
+    def get_model_7(self, dataframe, 
+                    prior_mu=(0.09, 2.5),
+                    prior_mu_diff1=(1.5, 2.5),  # Difference between orthogonal projection block 1 and 3 to block 2.
+                    prior_mu_diff2=(1.5, 2.5),  # Difference between orthogonal projection block 2 to parallel 1.
+                    prior_sigma=1.0):
         """ Compute marginal-log-likelihood of M3: Priming/Learning effect after constrained task.
         
         Strong synergy in first unconstrained task, no synergy in constrained task, weak/no synergy in the
@@ -218,129 +478,37 @@ class ModelComparison:
         :type dataframe: pandas.DataFrame
         :rtype: float
         """
-        with pm.Model() as model:
+        coords = self.get_coordinates(dataframe)
+        block_mx = self.get_block_dmatrix(dataframe)
+
+        with pm.Model(coords=coords) as model:
             model.name = "Training Effect"
-            # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
-            # Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
-            # variables is gamma-distributed again.
-            scale = pm.Gamma("scale", alpha=1.0, beta=1.0)
-            shape_ortho = pm.Gamma("shape", alpha=1.0, beta=1.0)
-            delta_shape_para_3 = pm.Gamma("dshape", alpha=1.0, beta=1.0)
-            delta_shape_para_1 = pm.Gamma("dshape2", alpha=1.0, beta=1.0)  # on top of dshape
-
-            blocks = dataframe.set_index('block').groupby('block')
-            for block, data in blocks:
-                # All blocks' orthogonal projections have low deviations.
-                obs = pm.Gamma(f"obs_block{block}_orthogonal", alpha=shape_ortho, beta=scale,
-                               observed=data['orthogonal'])
-                if block == 1:
-                    obs = pm.Gamma(f"obs_block{block}_parallel",
-                                   alpha=shape_ortho + delta_shape_para_1 + delta_shape_para_3, beta=scale,
-                                   observed=data['parallel'])  # strong synergy
-                elif block == 2:
-                    # No synergy.
-                    obs = pm.Gamma(f"obs_block{block}_parallel", alpha=shape_ortho, beta=scale,
-                                   observed=data['parallel'])
-                else:
-                    obs = pm.Gamma(f"obs_block{block}_parallel", alpha=shape_ortho + delta_shape_para_3, beta=scale,
-                                   observed=data['parallel'])  # weak synergy
-        return model
-
-    def get_model_4(self, dataframe):
-        """ Compute marginal-log-likelihood of M4: Extraneous cognitive load / split-attention-effect.
+            blocks_idx = pm.Data('blocks_idx', block_mx.values, dims=('obs_id', 'Block'))
+            # Blocks 1 an 3 orthogonal.
+            mu_blocks13_ortho = pm.Normal('mu_blocks_1_3_orthogonal', mu=prior_mu[0], sigma=prior_mu[1])
+            # Poisitive differences. First for direction, second for block 2.
+            diff = pm.Gamma('mu_diff',
+                            mu=np.array([prior_mu_diff1[0], prior_mu_diff2[0]]),
+                            sigma=np.array([prior_mu_diff1[1], prior_mu_diff2[1]]),
+                            shape=2)
+            
+            mu_block2 = pm.Deterministic('mu_block_2', mu_blocks13_ortho + diff[0])
+            mu_block1_para = pm.Deterministic('mu_block_1_parallel', mu_blocks13_ortho + diff[0] + diff[1])
+            # Variability in block 2 shouldbe the same for both directions.
+            theta_ortho = (1 - blocks_idx[:, 1]) * mu_blocks13_ortho + blocks_idx[:, 1] * mu_block2
+            theta_para = blocks_idx[:, 0] * mu_block1_para + (1 - blocks_idx[:, 0]) * mu_block2
+            
+            # Model error:
+            sigma = pm.Exponential("sigma", lam=prior_sigma, dims='Direction')
+            # Expected deviation per direction:
+            theta = pm.math.stack((theta_ortho, theta_para)).T
+            # Observed variable.
+            projection_obs = pm.Data("projection_obs", dataframe[coords['Direction']], dims=('obs_id', 'Direction'))
+            # Using user_idx to index theta somehow tells which prior belongs to which user.
+            projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
+                                   dims=('obs_id', 'Direction'))
         
-        Constrained task is perceived more difficult by visual instructions. Strong synergy in simpler task.
-        
-        Prior believe: Likely for users with no video-game experience. It's also likely that participants don't figure
-        out the control scheme of df1=df2=target/2, since only one df seems constrained which might get more attention.
-        
-        :type dataframe: pandas.DataFrame
-        :rtype: float
-        """
-        with pm.Model() as model:
-            model.name = "Split Attention Effect"
-            # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
-            # Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
-            # variables is gamma-distributed again.
-            scale = pm.Gamma("scale", alpha=1.0, beta=1.0)
-            shape = pm.Gamma("shape", alpha=1.0, beta=1.0)
-            delta_shape = pm.Gamma("dshape", alpha=1.0, beta=1.0)
-
-            blocks = dataframe.set_index('block').groupby('block')
-            for block, data in blocks:
-                # All blocks' parallel projections have higher deviations than orthogonal projections in block 1&3.
-                obs = pm.Gamma(f"obs_block{block}_parallel", alpha=shape + delta_shape, beta=scale,
-                               observed=data['parallel'])
-                # Orthogonal projections in blocks 2 have higher deviations than in block 1&3.
-                if block == 2:
-                    obs = pm.Gamma(f"obs_block{block}_orthogonal", alpha=shape + delta_shape, beta=scale,
-                                   observed=data['orthogonal'])
-                else:
-                    obs = pm.Gamma(f"obs_block{block}_orthogonal", alpha=shape, beta=scale, observed=data['orthogonal'])
-        return model
-
-    def get_model_5(self, dataframe):
-        """ Compute marginal-log-likelihood of M5: Synergy is needed to perform a task.
-        
-        Main effect of projection (parallel > orthogonal).
-        Strong synergies in all the tasks. This model implies a bad performance for the additional goal in the
-        constrained task.
-        
-        Prior believe: Unlikely.
-        
-        :type dataframe: pandas.DataFrame
-        :rtype: float
-        """
-        with pm.Model() as model:
-            model.name = "Main Effect Projection"
-            # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
-            # Make use of the divisibility of the gamma distribution: the sum of two gamma-distributed
-            # variables is gamma-distributed again.
-            scale = pm.Gamma("scale", alpha=1.0, beta=1.0)
-            shape_ortho = pm.Gamma("shape", alpha=1.0, beta=1.0)
-            delta_shape_para = pm.Gamma("dshape", alpha=1.0, beta=1.0)
-        
-            # Describe blocks.
-            blocks = dataframe.set_index('block').groupby('block')
-            for block, data in blocks:
-                # All blocks' orthogonal projections have low deviations.
-                obs = pm.Gamma(f"obs_block{block}_orthogonal", alpha=shape_ortho, beta=scale,
-                               observed=data['orthogonal'])
-                # All blocks' parallel projections have higher deviations than the orthogonal projections.
-                obs = pm.Gamma(f"obs_block{block}_parallel", alpha=shape_ortho + delta_shape_para, beta=scale,
-                               observed=data['parallel'])
-        return model
-
-    def get_model_6(self, dataframe):
-        """ Compute marginal-log-likelihood of M6:
-        
-        Main effect of treatment (block 2 > block 1&3).
-        No synergy effects can be observed for this particular bi-manual task. The constrained task (block 2) appears
-        too difficult to coordinate and results in heightened deviations in all directions compared to the
-        unconstrained task (blocks 1&3).
-        
-        Prior believe: Unlikely
-        
-        :type dataframe: pandas.DataFrame
-        :rtype: float
-        """
-        with pm.Model() as model:
-            model.name = "Main Effect Block"
-            # Assume that the squared deviations are drawn from a Gamma distribution with unknown parameters.
-            # Both parameters have to be positive, so draw them from a Gamma prior, too.
-            # TODO: Perhaps use the alternative parametrization with mu, sigma instead, once we have the pilot data.
-            scale = pm.Gamma("scale", alpha=1.0, beta=1.0)
-            base_shape = pm.Gamma("shape", alpha=1.0, beta=1.0)
-            delta_shape = pm.Gamma("dshape", alpha=1.0, beta=1.0)
-        
-            blocks = dataframe.set_index('block').groupby('block')
-            for block, data in blocks:
-                if block == 2:
-                    shape = base_shape + delta_shape
-                else:
-                    shape = base_shape
-                obs = pm.Gamma(f"obs_block{block}_parallel", alpha=shape, beta=scale, observed=data['parallel'])
-                obs = pm.Gamma(f"obs_block{block}_orthogonal", alpha=shape, beta=scale, observed=data['orthogonal'])
+        self.update_sample_params(model.name, draws=2000, tune=1200, target_accept=0.99)
         return model
 
     def get_models(self, data):
@@ -371,7 +539,9 @@ class ModelComparison:
         with model:
             # Sample.
             print(f"\nSampling for Model: {model.name}.")
-            trace = pm.sample(self.draws, tune=self.tune)
+            trace = pm.sample(self.sample_params[model.name]['draws'],
+                              tune=self.sample_params[model.name]['tune'],
+                              target_accept=self.sample_params[model.name]['target_accept'])
         return trace
         
     def get_marginal_likelihood(self, model, trace=None):
@@ -411,9 +581,13 @@ class ModelComparison:
         print(f"\nCommencing model comparison for user {user}...\n")
         # Get models for observed data of participant.
         df = self._filter_by_user(user)
-        models = self.get_models(df)
-        # First, compute all marginal log-likelihoods,
-        model_posterior = np.array([self.get_marginal_likelihood(model) for model in models])
+        models = self.get_models(df)  # TODO: Keep models, then just set new data on existing model.
+        # First, sample all models.
+        for model in models:
+            self.traces[user].update({model.name: self.sample(model)})
+        # Secondly, compute all marginal log-likelihoods,
+        model_posterior = np.array([self.get_marginal_likelihood(model, trace=self.traces[user][model.name]) 
+                                    for model in models])
         # then, exponentiate and normalize to turn into a probability distribution.
         model_posterior = np.exp(model_posterior-np.logaddexp.reduce(model_posterior))
         # Save posterior for this participant.
