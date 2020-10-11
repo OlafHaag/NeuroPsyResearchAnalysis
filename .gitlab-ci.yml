@@ -125,6 +125,25 @@ model_comparison:
     untracked: false
     expire_in: 1 week
 
+hlm:
+  stage: model_comparison
+  script:
+    - python scripts/09-hlm2.py
+  timeout: 3h
+  needs:
+    - job: preprocess
+      artifacts: true
+  artifacts:
+    name: "$CI_JOB_NAME"
+    paths:
+      - reports
+      - models
+    exclude:
+      - reports/**/.gitignore
+      - reports/tests/*
+    untracked: false
+    expire_in: 1 week
+
 testDummyData:
   stage: test
   script:
