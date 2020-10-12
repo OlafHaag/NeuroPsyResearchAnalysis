@@ -118,6 +118,7 @@ model_comparison:
   artifacts:
     name: "$CI_JOB_NAME"
     paths:
+      - models
       - reports
     exclude:
       - reports/**/.gitignore

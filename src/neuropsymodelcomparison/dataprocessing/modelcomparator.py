@@ -5,6 +5,7 @@
 """
 from pathlib import Path
 from typing import Union
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -53,6 +54,7 @@ class ModelComparison:
                             self.get_model_7,
                             ]
         self.traces = {user: dict() for user in self.df['user'].unique()}
+        self.models = {user: list() for user in self.df['user'].unique()}
         # ToDo: The priors are the shape and scale parameters, or mu and sigma of the Gamma distributions.
         # We test the hypotheses on each user and get a distribution of hypotheses distributions.
         self.posteriors = pd.DataFrame(columns=[f"M{i}" for i in range(len(self.model_funcs))],
@@ -87,8 +89,8 @@ class ModelComparison:
         mask = (counts >= min_samples).all(axis='columns')
         excluded = ', '.join([str(u) for u in mask[~mask].index.values])
         if excluded:
-            print(f"\nWARNING: Removing users {excluded} from analysis because they don't meet the requirement of "
-                  f"having at least {min_samples} valid samples in all blocks.")
+            warnings.warn(f"\Removing users {excluded} from analysis because they don't meet the requirement of "
+                          f"having at least {min_samples} valid samples in all blocks.")
             df = df[df['user'].map(mask)]
         print("Done.")
         return df
@@ -176,7 +178,7 @@ class ModelComparison:
         coords = self.get_coordinates(dataframe)
 
         with pm.Model(coords=coords) as model:
-            model.name = "Null Model"
+            model.name = "M0"
             # Prior.
             mu = pm.Normal("mu", mu=prior_mu[0], sigma=prior_mu[1])
             # Our coordinates aren't in long format, so we need to have the same prior 2 times to cover both directions.
@@ -211,7 +213,7 @@ class ModelComparison:
         coords = self.get_coordinates(dataframe)
 
         with pm.Model(coords=coords) as model:
-            model.name = "Main Effect Projection"
+            model.name = "M1"
             # Priors.
             mu_ortho = pm.Normal('mu_orthogonal', mu=prior_mu_orthogonal[0], sigma=prior_mu_orthogonal[1])
             # Assume positive difference.
@@ -248,7 +250,7 @@ class ModelComparison:
         block_mx = self.get_block_dmatrix(dataframe)
 
         with pm.Model(coords=coords) as model:
-            model.name = "Main Effect Block"
+            model.name = "M2"
             block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
             # Blocks 1 an 3.
             mu_blocks13 = pm.Normal('mu_blocks_1_3', mu=prior_mu[0], sigma=prior_mu[1])
@@ -290,7 +292,7 @@ class ModelComparison:
         block_mx = self.get_block_dmatrix(dataframe)
 
         with pm.Model(coords=coords) as model:
-            model.name = "2 Main Effects"
+            model.name = "M3"
             block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
             # Blocks 1 an 3.
             mu_blocks13_ortho = pm.Normal('mu_blocks_1_3_orthogonal', mu=prior_mu_ortho[0], sigma=prior_mu_ortho[1])
@@ -337,7 +339,7 @@ class ModelComparison:
         block_mx = self.get_block_dmatrix(dataframe)
 
         with pm.Model(coords=coords) as model:
-            model.name = "Split Attention Effect"
+            model.name = "M4"
             block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
             # Blocks 1 an 3 orthogonal.
             mu_ortho = pm.Normal('mu_blocks_1_3_orthogonal', mu=prior_mu[0], sigma=prior_mu[1])
@@ -385,7 +387,7 @@ class ModelComparison:
         block_mx = self.get_block_dmatrix(dataframe)
 
         with pm.Model(coords=coords) as model:
-            model.name = "Precision dependent on Synergy"
+            model.name = "M5"
             block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
             # Blocks 1 an 3.
             mu_blocks13_ortho = pm.Normal('mu_blocks_1_3_orthogonal', mu=prior_mu[0], sigma=prior_mu[1])
@@ -435,7 +437,7 @@ class ModelComparison:
         block_mx = self.get_block_dmatrix(dataframe)
 
         with pm.Model(coords=coords) as model:
-            model.name = "Precision independent of Synergy"
+            model.name = "M6"
             block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
             # Orthogonal projections.
             mu_ortho = pm.Normal('mu_orthogonal', mu=prior_mu[0], sigma=prior_mu[1])
@@ -482,7 +484,7 @@ class ModelComparison:
         block_mx = self.get_block_dmatrix(dataframe)
 
         with pm.Model(coords=coords) as model:
-            model.name = "Training Effect"
+            model.name = "M7"
             blocks_idx = pm.Data('blocks_idx', block_mx.values, dims=('obs_id', 'Block'))
             # Blocks 1 an 3 orthogonal.
             mu_blocks13_ortho = pm.Normal('mu_blocks_1_3_orthogonal', mu=prior_mu[0], sigma=prior_mu[1])
@@ -581,7 +583,8 @@ class ModelComparison:
         print(f"\nCommencing model comparison for user {user}...\n")
         # Get models for observed data of participant.
         df = self._filter_by_user(user)
-        models = self.get_models(df)  # TODO: Keep models, then just set new data on existing model.
+        # TODO: Create models first, then just set new data on existing models?
+        models = self.models[user] = self.get_models(df)
         # First, sample all models.
         for model in models:
             self.traces[user].update({model.name: self.sample(model)})
@@ -593,6 +596,42 @@ class ModelComparison:
         # Save posterior for this participant.
         self.posteriors.loc[user] = model_posterior
         return {i: mp for i, mp in enumerate(model_posterior)}
+
+    def write_traces(self, destination, user=None):
+        """ Create directory for each user. In each user directory create folders for each model.
+        Each chain goes inside a directory, and each directory contains a metadata json file,
+        and a numpy compressed file.
+
+        :param destination: Directory to save to.
+        :type destination: Union[str, Path]
+        :param user: Only write traces of this user.
+        :type: int
+        """
+        if isinstance(destination, str):
+            destination = Path(destination)
+
+        if user:
+            if user not in self.traces.keys():
+                warnings.warn(f"User {user} not found!")
+                return
+            elif not self.traces[user]:
+                warnings.warn(f"No traces for user {user}!")
+                return
+
+        # ToDo: parallelize.
+        print("Writing traces to files... ")
+        for u, models in self.traces.items():
+            # If user given, only process this one.
+            if user and u!=user:
+                continue
+            # User folder.
+            user_folder = destination / f'user_{u}'
+            for model_name, trace in models.items():
+                # Create model folder.
+                model_folder = user_folder / model_name
+                model_folder.mkdir(parents=True, exist_ok=True)
+                pm.save_trace(trace, directory=str(model_folder), overwrite=True)
+        print("Done.\n")
 
     def write_posteriors(self, destination):
         """ Write posterior distribution to file.

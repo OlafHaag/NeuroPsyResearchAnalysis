@@ -99,7 +99,12 @@ out_file = reports_path / "posteriors.csv"
 model_comp.write_posteriors(out_file)
 logging.info(f"Written report to {out_file.resolve()}")
 
-# Save Figures
+# Save figures.
 fig_filepath = figures_path / 'heatmap-posteriors.pdf'
 fig_posteriors.write_image(str(fig_filepath))
 logging.info(f"Written figure to {fig_filepath.resolve()}")
+
+# Save traces.
+out_path = Path.cwd() / 'models'
+model_comp.write_traces(out_path)
+logging.info(f"Written traces to {out_path.resolve()}")
