@@ -23,7 +23,7 @@ class TestModelComparator:
         # ++++++++++++++++++++++++++++++++++++
         # ++ Model 1 conform data           ++
         # ++++++++++++++++++++++++++++++++++++
-        # Create some data conforming to M1.
+        # Create some data conforming to M5.
         # Variable length of trials per block due to exclusions.
         n_trials = 30 - np.random.randint(12, size=3)
         # blocks 1&3 have smallest orthogonal deviations, but largest parallel deviations. Strong synergy.
@@ -43,7 +43,7 @@ class TestModelComparator:
         # ++++++++++++++++++++++++++++++++++++
         # ++ Model 2 conform data           ++
         # ++++++++++++++++++++++++++++++++++++
-        # Create some data conforming to M1.
+        # Create some data conforming to M6.
         # Variable length of trials per block due to exclusions.
         n_trials = 30 - np.random.randint(12, size=3)
         # blocks 1&3 have smallest orthogonal deviations, but largest parallel deviations. Strong synergy.
@@ -64,7 +64,7 @@ class TestModelComparator:
         # ++++++++++++++++++++++++++++++++++++
         # ++ Model 5 conform data           ++
         # ++++++++++++++++++++++++++++++++++++
-        # Create some data conforming to M5: parallel > orthogonal deviation across blocks.
+        # Create some data conforming to M1: parallel > orthogonal deviation across blocks.
         n_trials = 90 - np.random.randint(36)
         df5 = pd.DataFrame({'user': 5, 'block': 1 + np.random.randint(3, size=n_trials),
                             'parallel': np.random.normal(0.0, 5.0, size=n_trials),
