@@ -61,7 +61,7 @@ model_comp = ModelComparison(df, min_samples=min_trials)
 # %%
 # Compare the data of each user to our theoretical models.
 # This will take quite some time!
-for user in df['user'].unique():
+for user in model_comp.df['user'].unique():
     model_comp.compare_models(user)
 
 # %%
