@@ -102,16 +102,21 @@ df['bc_sq_projection'] = fitted_projection
 
 # %%
 # Vizualize the data.
-g = sns.FacetGrid(df, col='block', row='user', hue="direction")
-g.despine(offset=10)
-g = (g.map(sns.distplot, "bc_sq_projection").add_legend(title="Projection", loc='upper right'))
-for ax in g.axes.flat:
-    ax.set_ylabel("Probability Density")
-    ax.set_xlabel("BoxCox(Projection Length^2)")
-plt.tight_layout()
+plt.figure(figsize=(10,8))
+g = sns.displot(data=df, 
+                x='bc_sq_projection', 
+                kind='ecdf', 
+                hue='direction',
+                rug=True,
+                #kde=True,
+                #legend=False,
+                col='block',
+                row='user')
+g.set_xlabels("Box Cox Projection$^2$")
+g.tight_layout()
 
 fig_filepath = figures_path / 'histogram-projections.pdf'
-plt.savefig(str(fig_filepath))
+g.savefig(str(fig_filepath))
 logging.info(f"Written figure to {fig_filepath.resolve()}")
 
 # %%
