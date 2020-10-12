@@ -36,6 +36,7 @@ figures_path = reports_path / 'figures'
 
 # Read in data.
 # We want to use the same threshold for including sessions as we used previously. So all should be included.
+# Alternatively, we could exclude by the 'exclude' column in the data.
 try:
     sample_info = Path.read_text(reports_path / 'sampling.txt')
     sample_info = '[dummy_section]\n'+ sample_info
@@ -48,7 +49,7 @@ else:
 
 trial_data = pd.read_csv(data_path / 'preprocessed/trials.csv', index_col='id')
 # We only analyze the first session of each participant.
-df = trial_data.loc[trial_data['session'] == 1, ['user', 'block', 'parallel', 'orthogonal']]
+df = trial_data.loc[trial_data['session'] == 1 & ~trial_data['outlier'], ['user', 'block', 'parallel', 'orthogonal']]
 
 
 # %%
