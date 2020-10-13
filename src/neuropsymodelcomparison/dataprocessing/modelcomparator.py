@@ -142,7 +142,7 @@ class ModelComparison:
         block_mx.columns = dataframe['block'].cat.categories.tolist()
         return block_mx
 
-    def update_sample_params(self, model_name, draws=1000, tune=800, target_accept=0.8):
+    def update_sample_params(self, model_name, draws=2000, tune=1000, target_accept=0.8):
         """[summary]
 
         :param model_name: [description]
@@ -192,7 +192,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
         
-        self.update_sample_params(model.name)  # Use defaults.
+        self.update_sample_params(model.name, draws=5000)
         return model
 
     def get_model_1(self, dataframe, 
@@ -230,7 +230,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
 
-        self.update_sample_params(model.name)  # Use defaults.
+        self.update_sample_params(model.name, draws=5000)
         return model
 
     def get_model_2(self, dataframe, prior_mu=(0.09, 2.5), prior_mu_diff=(1.5, 2.5), prior_sigma=1.0):
@@ -269,7 +269,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
         
-        self.update_sample_params(model.name, draws=2000, tune=1200, target_accept=0.95)
+        self.update_sample_params(model.name, draws=5000, tune=2000, target_accept=0.95)
         return model
 
     def get_model_3(self, dataframe, 
@@ -319,7 +319,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
         
-        self.update_sample_params(model.name, draws=2000, tune=1200, target_accept=0.95)
+        self.update_sample_params(model.name, draws=5000, tune=2000, target_accept=0.95)
         return model
 
     def get_model_4(self, dataframe, prior_mu=(0.09, 2.5), prior_mu_diff=(1.5, 2.5), prior_sigma=1.0):
@@ -361,7 +361,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
 
-        self.update_sample_params(model.name, draws=2000, tune=1200, target_accept=0.8)
+        self.update_sample_params(model.name, draws=5000, tune=2000, target_accept=0.8)
         return model
 
     def get_model_5(self, dataframe, 
@@ -413,7 +413,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
         
-        self.update_sample_params(model.name, draws=2000, tune=1200, target_accept=0.99)
+        self.update_sample_params(model.name, draws=5000, tune=2000, target_accept=0.99)
         return model
     
     def get_model_6(self, dataframe, prior_mu=(0.09, 2.5), prior_mu_diff=(1.5, 2.5), prior_sigma=1.0):
@@ -459,7 +459,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
 
-        self.update_sample_params(model.name, draws=2000, tune=1200, target_accept=0.9)
+        self.update_sample_params(model.name, draws=5000, tune=2000, target_accept=0.9)
         return model
 
     def get_model_7(self, dataframe, 
@@ -510,7 +510,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
         
-        self.update_sample_params(model.name, draws=2000, tune=1200, target_accept=0.99)
+        self.update_sample_params(model.name, draws=5000, tune=2000, target_accept=0.99)
         return model
 
     def get_models(self, data):
