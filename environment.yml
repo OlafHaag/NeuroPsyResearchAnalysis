@@ -17,6 +17,7 @@ dependencies:
   - scikit-learn
   - pingouin>=0.3.8
   - plotly
+  - poppler
   - python-kaleido
   - Matplotlib
   - Seaborn
