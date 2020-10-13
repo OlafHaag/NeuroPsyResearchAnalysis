@@ -72,7 +72,7 @@ def generate_trials_figure(df, marker_opacity=0.7, marker_size=10, contour_data=
     if df.empty:
         data = []
     else:
-        data = [go.Scattergl(
+        data = [go.Scatter(
             x=df[df['task'] == t]['df1'],
             y=df[df['task'] == t]['df2'],
             text=[f"df1={j['df1']:.2f}<br />df2={j['df2']:.2f}<br />Sum={j['sum']:.2f}<br />Participant {j['user']}"
@@ -105,7 +105,7 @@ def generate_trials_figure(df, marker_opacity=0.7, marker_size=10, contour_data=
         )
     )
     # Task goal 1 visualization.
-    fig.add_trace(go.Scattergl(
+    fig.add_trace(go.Scatter(
         x=[25, 100],
         y=[100, 25],
         mode='lines',
@@ -115,7 +115,7 @@ def generate_trials_figure(df, marker_opacity=0.7, marker_size=10, contour_data=
         hovertemplate="df1+df2=125",
     ))
     # Task goal 2 (DoF constrained) visualization.
-    fig.add_scattergl(y=[62.5], x=[62.5],
+    fig.add_scatter(y=[62.5], x=[62.5],
                     name="task goal 2",
                     text=["task goal 2 (df1=df2)"],
                     hoverinfo='text',
@@ -201,13 +201,13 @@ def add_pca_ellipses(fig, pca_dataframe, size=2.0):
                                            a=np.sqrt(group['var_expl'].iloc[0])*size,
                                            b=np.sqrt(group['var_expl'].iloc[1])*size,
                                            )
-            fig.add_scattergl(x=x,
-                              y=y,
-                              mode='lines',
-                              line_color=theme[name],
-                              showlegend=False,
-                              hoverinfo='skip',
-                              )
+            fig.add_scatte(x=x,
+                           y=y,
+                           mode='lines',
+                           line_color=theme[name],
+                           showlegend=False,
+                           hoverinfo='skip',
+                          )
     except (KeyError, IndexError):
         pass
 
@@ -438,7 +438,7 @@ def generate_means_figure(dataframe, variables=None, **layout_kwargs):
         # Add mean across participants by block
         means = analysis.get_mean(dataframe, column=v['var'], by='task')
         for task, value in means.iteritems():
-            fig.add_trace(go.Scattergl(
+            fig.add_trace(go.Scatter(
                 x=[task_order[task] - 0.5, task_order[task], task_order[task] + 0.5],
                 y=[value, value, value],
                 name=f"Task {task}",
@@ -606,7 +606,7 @@ def generate_lines_plot(dataframe, y_var, errors=None, by='user', facets='condit
                       line_group=by, facet_col=facets, facet_col_wrap=0, color=color_col, color_discrete_map=theme,
                       hover_data=hover_data, labels={'block_': 'block', 'task_': 'task'},
                       range_x=x_range,
-                      render_mode='webgl', 
+                      render_mode='svg', 
                       **layout_kwargs)
         fig.update_xaxes(title="Block", tickvals=dataframe['block'].unique())
     except (KeyError, ValueError) as e:
@@ -667,11 +667,11 @@ def generate_qq_plot(dataframe, vars_, dist='norm', **layout_kwargs):
                 theoretical_qs = scipy.stats.probplot(z_scores[var_], dist=dist)
                 x = np.array([theoretical_qs[0][0][0], theoretical_qs[0][0][-1]])
             
-                fig.add_scattergl(x=theoretical_qs[0][0], y=theoretical_qs[0][1], showlegend=show_legend,
-                                  mode='markers', name=var_, marker_color=theme[var_], opacity=0.7,
-                                  row=1, col=col_order[name])
-                fig.add_scattergl(x=x, y=theoretical_qs[1][1] + theoretical_qs[1][0] * x, mode='lines',
-                                  showlegend=False, marker_color=theme[var_], row=1, col=col_order[name])
+                fig.add_scatter(x=theoretical_qs[0][0], y=theoretical_qs[0][1], showlegend=show_legend,
+                                mode='markers', name=var_, marker_color=theme[var_], opacity=0.7,
+                                row=1, col=col_order[name])
+                fig.add_scatter(x=x, y=theoretical_qs[1][1] + theoretical_qs[1][0] * x, mode='lines',
+                                showlegend=False, marker_color=theme[var_], row=1, col=col_order[name])
             show_legend = False
         
     fig.layout.update(legend=legend,
