@@ -16,9 +16,11 @@ import arviz
 import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import plotly.io as pio
 
 from neuropsymodelcomparison.dataprocessing.modelcomparator import ModelComparison
+from neuropsymodelcomparison import plot
 
 # Default file format for plotly figures.
 pio.kaleido.scope.default_format = "pdf"
@@ -66,6 +68,7 @@ for user in model_comp.df['user'].unique():
 
 # %%
 # Augment posterior data.
+columns = model_comp.posteriors.columns
 # Condition.
 conditions = trial_data.loc[trial_data['user'].isin(model_comp.posteriors.index), 
                             ['user','condition']].drop_duplicates().set_index('user')
@@ -90,6 +93,40 @@ fig_posteriors.update_yaxes(tickmode='array',
                             ticktext=model_comp.posteriors.index,
                             showspikes=True)
 
+# %%
+# By condition.
+post = model_comp.posteriors.melt(id_vars=['user', 'condition'],
+                                  value_vars=columns.drop('user'),
+                                  value_name='probability',
+                                  var_name='model')
+
+fig_post_hist =px.histogram(post, x='probability',
+                            color='Model',
+                            opacity=0.7,
+                            facet_col='condition',
+                            facet_row='Model',
+                            histnorm='percent',
+                            labels={'model': "Model",
+                                    'probability': "Probability",
+                                    'condition': "Condition"},
+                            height=800)
+fig_post_hist.update_yaxes(hoverformat='.2f', title="")
+fig_post_hist.update_layout(showlegend=False,
+                            margin=plot.theme['graph_margins'],
+                            annotations = list(fig_post_hist.layout.annotations) + 
+                            [go.layout.Annotation(x=-0.09,
+                                                  y=0.5,
+                                                  font=dict(
+                                                      size=14
+                                                  ),
+                                                  showarrow=False,
+                                                  text="Frequency (percent)",
+                                                  textangle=-90,
+                                                  xref="paper",
+                                                  yref="paper"
+                                                 )
+                            ])
+
 # %% [markdown]
 # ## Save Reports
 
@@ -102,6 +139,10 @@ logging.info(f"Written report to {out_file.resolve()}")
 # Save figures.
 fig_filepath = figures_path / 'heatmap-posteriors.pdf'
 fig_posteriors.write_image(str(fig_filepath))
+logging.info(f"Written figure to {fig_filepath.resolve()}")
+
+fig_filepath = figures_path / 'histogram-posteriors.pdf'
+fig_post_hist.write_image(str(fig_filepath))
 logging.info(f"Written figure to {fig_filepath.resolve()}")
 
 # Save traces.
