@@ -95,16 +95,16 @@ fig_posteriors.update_yaxes(tickmode='array',
 
 # %%
 # By condition.
-post = model_comp.posteriors.melt(id_vars=['user', 'condition'],
-                                  value_vars=columns.drop('user'),
-                                  value_name='probability',
-                                  var_name='model')
+post = model_comp.posteriors.reset_index().melt(id_vars=['user', 'condition'],
+                                                value_vars=columns,
+                                                value_name='probability',
+                                                var_name='model')
 
 fig_post_hist =px.histogram(post, x='probability',
-                            color='Model',
+                            color='model',
                             opacity=0.7,
                             facet_col='condition',
-                            facet_row='Model',
+                            facet_row='model',
                             histnorm='percent',
                             labels={'model': "Model",
                                     'probability': "Probability",
