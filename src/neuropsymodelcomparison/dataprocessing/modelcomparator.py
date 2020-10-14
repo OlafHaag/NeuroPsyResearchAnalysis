@@ -142,7 +142,7 @@ class ModelComparison:
         block_mx.columns = dataframe['block'].cat.categories.tolist()
         return block_mx
 
-    def update_sample_params(self, model_name, draws=2000, tune=1000, target_accept=0.8):
+    def update_sample_params(self, model_name, draws=2000, tune=2000, target_accept=0.8):
         """[summary]
 
         :param model_name: [description]
@@ -179,8 +179,9 @@ class ModelComparison:
 
         with pm.Model(coords=coords) as model:
             model.name = "M0"
-            # Prior.
-            mu = pm.Normal("mu", mu=prior_mu[0], sigma=prior_mu[1])
+            # Prior. non-centered.
+            z = pm.Normal("z", mu=0, sigma=1)
+            mu = pm.Deterministic("mu", prior_mu[0] + z * prior_mu[1])
             # Our coordinates aren't in long format, so we need to have the same prior 2 times to cover both directions.
             theta = pm.math.stack((mu, mu)).T
             # Model error.
@@ -192,13 +193,10 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
         
-        self.update_sample_params(model.name, draws=5000)
+        self.update_sample_params(model.name)  # defaults
         return model
 
-    def get_model_1(self, dataframe, 
-                    prior_mu_orthogonal=(0.09, 2.5),
-                    prior_mu_diff=(1.5, 2.5),
-                    prior_sigma=1.0):
+    def get_model_1(self, dataframe, prior_mu_orthogonal=(0.09, 2.5), prior_diff_scale=2.5, prior_sigma=1.0):
         """ Compute marginal-log-likelihood of M5: Synergy is needed to perform a task.
         
         Main effect of projection (parallel > orthogonal).
@@ -214,10 +212,11 @@ class ModelComparison:
 
         with pm.Model(coords=coords) as model:
             model.name = "M1"
-            # Priors.
-            mu_ortho = pm.Normal('mu_orthogonal', mu=prior_mu_orthogonal[0], sigma=prior_mu_orthogonal[1])
+            # non-centered priors.
+            z_ortho = pm.Normal('z_ortho', mu=0, sigma=1)
+            mu_ortho = pm.Deterministic("mu_ortho", prior_mu_orthogonal[0] + z_ortho * prior_mu_orthogonal[1])
             # Assume positive difference.
-            mu_diff = pm.Gamma('mu_diff', mu=prior_mu_diff[0], sigma=prior_mu_diff[1])
+            mu_diff = pm.HalfNormal('mu_diff', sigma=prior_diff_scale)
             mu_parallel = pm.Deterministic('mu_parallel', mu_ortho + mu_diff)
 
             # Stack priors.
@@ -230,10 +229,10 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
 
-        self.update_sample_params(model.name, draws=5000)
+        self.update_sample_params(model.name)  # defaults
         return model
 
-    def get_model_2(self, dataframe, prior_mu=(0.09, 2.5), prior_mu_diff=(1.5, 2.5), prior_sigma=1.0):
+    def get_model_2(self, dataframe, prior_mu=(0.09, 2.5), prior_diff_scale=2.5, prior_sigma=1.0):
         """ Compute marginal-log-likelihood of M6:
         
         Main effect of treatment (block 2 > block 1&3).
@@ -252,10 +251,11 @@ class ModelComparison:
         with pm.Model(coords=coords) as model:
             model.name = "M2"
             block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
-            # Blocks 1 an 3.
-            mu_blocks13 = pm.Normal('mu_blocks_1_3', mu=prior_mu[0], sigma=prior_mu[1])
+            # Priors for blocks 1 an 3, non-centered.
+            z_blocks13 = pm.Normal("z_blocks_1_3", mu=0, sigma=1)
+            mu_blocks13 = pm.Deterministic('mu_blocks_1_3', prior_mu[0] + z_blocks13 * prior_mu[1])
             # Poisitive difference to Block 2.
-            diff = pm.Gamma('mu_diff', mu=prior_mu_diff[0], sigma=prior_mu_diff[1])
+            diff = pm.HalfNormal('mu_diff', sigma=prior_diff_scale)
             mu_block2 = pm.Deterministic('mu_block_2', mu_blocks13 + diff)
 
             # Expected deviation. block2_idx is either 0 or 1.
@@ -269,13 +269,13 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
         
-        self.update_sample_params(model.name, draws=5000, tune=2000, target_accept=0.95)
+        self.update_sample_params(model.name, target_accept=0.9)
         return model
 
     def get_model_3(self, dataframe, 
                     prior_mu_ortho=(0.09, 2.5),
-                    prior_mu_diff_dir=(1.5, 2.5),
-                    prior_mu_diff_block=(1.0, 3.5),
+                    prior_diff_dir=2.5,
+                    prior_diff_block=3.5,
                     prior_sigma=1.0):
         """ Compute marginal-log-likelihood of M4: Both main effects, for direction and block.
                                                    (Extraneous cognitive load I).
@@ -294,13 +294,15 @@ class ModelComparison:
         with pm.Model(coords=coords) as model:
             model.name = "M3"
             block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
-            # Blocks 1 an 3.
-            mu_blocks13_ortho = pm.Normal('mu_blocks_1_3_orthogonal', mu=prior_mu_ortho[0], sigma=prior_mu_ortho[1])
+            # Prior blocks 1 an 3 orthogonal, non-centered.
+            z_blocks13_ortho = pm.Normal("z_blocks_1_3", mu=0, sigma=1)
+            mu_blocks13_ortho = pm.Deterministic('mu_blocks_1_3_orthogonal',
+                                                 prior_mu_ortho[0] + z_blocks13_ortho * prior_mu_ortho[1])
+
             # Poisitive differences. First for direction, second for block 2.
-            diff = pm.Gamma('mu_diff',
-                            mu=np.array([prior_mu_diff_dir[0], prior_mu_diff_block[0]]),
-                            sigma=np.array([prior_mu_diff_dir[1], prior_mu_diff_block[1]]),
-                            shape=2)
+            diff = pm.HalfNormal('mu_diff',
+                                 sigma=np.array([prior_diff_dir, prior_diff_block]),
+                                 shape=2)
             
             mu_block2_ortho = pm.Deterministic('mu_block_2_orthogonal', mu_blocks13_ortho + diff[1])
             mu_blocks13_para = pm.Deterministic('mu_blocks_1_3_parallel', mu_blocks13_ortho + diff[0])
@@ -319,10 +321,10 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
         
-        self.update_sample_params(model.name, draws=5000, tune=2000, target_accept=0.95)
+        self.update_sample_params(model.name, target_accept=0.9)
         return model
 
-    def get_model_4(self, dataframe, prior_mu=(0.09, 2.5), prior_mu_diff=(1.5, 2.5), prior_sigma=1.0):
+    def get_model_4(self, dataframe, prior_mu=(0.09, 2.5), prior_diff_scale=2.5, prior_sigma=1.0):
         """ Compute marginal-log-likelihood of M4: Extraneous cognitive load / split-attention-effect.
         
         Constrained task is perceived more difficult by visual instructions. Strong synergy in simpler task.
@@ -341,10 +343,10 @@ class ModelComparison:
         with pm.Model(coords=coords) as model:
             model.name = "M4"
             block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
-            # Blocks 1 an 3 orthogonal.
+            # Blocks 1 an 3 orthogonal. Centered parameterization seems to cause less divergences?!
             mu_ortho = pm.Normal('mu_blocks_1_3_orthogonal', mu=prior_mu[0], sigma=prior_mu[1])
             # Poisitive difference to Block 2 AND parallel.
-            diff = pm.Gamma('mu_diff', mu=prior_mu_diff[0], sigma=prior_mu_diff[1])
+            diff = pm.HalfNormal('mu_diff', sigma=prior_diff_scale)
             mu_parallel = pm.Deterministic('mu_parallel', mu_ortho + diff)
 
             # Expected deviation per direction and block:
@@ -361,13 +363,13 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
 
-        self.update_sample_params(model.name, draws=5000, tune=2000, target_accept=0.8)
+        self.update_sample_params(model.name, draws=2000, tune=3000, target_accept=0.8)
         return model
 
     def get_model_5(self, dataframe, 
                     prior_mu=(0.09, 2.5),
-                    prior_mu_diff1=(1.5, 2.5),  # Difference between orthogonal projection block 1 and 3 to block 2.
-                    prior_mu_diff2=(1.5, 2.5),  # Difference between orthogonal projection block 2 to parallel 1 and 3.
+                    prior_mu_diff1=2.5,  # Difference between orthogonal projection block 1 and 3 to block 2.
+                    prior_mu_diff2=2.5,  # Difference between orthogonal projection block 2 to parallel 1 and 3.
                     prior_sigma=1.0):
         """ Compute marginal-log-likelihood of M1: Synergy affects task performance by increasing precision.
         
@@ -389,13 +391,14 @@ class ModelComparison:
         with pm.Model(coords=coords) as model:
             model.name = "M5"
             block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
-            # Blocks 1 an 3.
-            mu_blocks13_ortho = pm.Normal('mu_blocks_1_3_orthogonal', mu=prior_mu[0], sigma=prior_mu[1])
+            # Prior blocks 1 an 3 orthogonal, non-centered.
+            z_blocks13_ortho = pm.Normal("z_blocks_1_3", mu=0, sigma=1)
+            mu_blocks13_ortho = pm.Deterministic('mu_blocks_1_3_orthogonal',
+                                                 prior_mu[0] + z_blocks13_ortho * prior_mu[1])
             # Poisitive differences. First for direction, second for block 2.
-            diff = pm.Gamma('mu_diff',
-                            mu=np.array([prior_mu_diff1[0], prior_mu_diff2[0]]),
-                            sigma=np.array([prior_mu_diff1[1], prior_mu_diff2[1]]),
-                            shape=2)
+            diff = pm.HalfNormal('mu_diff',
+                                 sigma=np.array([prior_mu_diff1, prior_mu_diff2]),
+                                 shape=2)
             
             mu_block2 = pm.Deterministic('mu_block_2', mu_blocks13_ortho + diff[0])
             mu_blocks13_para = pm.Deterministic('mu_blocks_1_3_parallel', mu_blocks13_ortho + diff[0] + diff[1])
@@ -413,10 +416,10 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
         
-        self.update_sample_params(model.name, draws=5000, tune=2000, target_accept=0.99)
+        self.update_sample_params(model.name, tune=3000, target_accept=0.9)
         return model
     
-    def get_model_6(self, dataframe, prior_mu=(0.09, 2.5), prior_mu_diff=(1.5, 2.5), prior_sigma=1.0):
+    def get_model_6(self, dataframe, prior_mu=(0.09, 2.5), prior_diff_scale=2.5, prior_sigma=1.0):
         """ Compute marginal-log-likelihood of M2: Synergy has no effect on task performance.
         
         Orthogonal variances are small in all blocks.
@@ -439,10 +442,11 @@ class ModelComparison:
         with pm.Model(coords=coords) as model:
             model.name = "M6"
             block2_idx = pm.Data('block2_idx', block_mx[2].values, dims='obs_id')
-            # Orthogonal projections.
-            mu_ortho = pm.Normal('mu_orthogonal', mu=prior_mu[0], sigma=prior_mu[1])
+            # Prior orthogonal projections, non-centered.
+            z_ortho = pm.Normal("z_ortho", mu=0, sigma=1)
+            mu_ortho = pm.Normal('mu_orthogonal', prior_mu[0] + z_ortho * prior_mu[1])
             # Poisitive difference to parallel projections in blocks 1 and 3.
-            diff = pm.Gamma('mu_diff', mu=prior_mu_diff[0], sigma=prior_mu_diff[1])
+            diff = pm.HalfNormal('mu_diff', sigma=prior_diff_scale)
             mu_parallel_blocks13 = pm.Deterministic('mu_parallel_blocks_1_3', mu_ortho + diff)
 
             # Expected deviation per direction and block:
@@ -459,13 +463,13 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
 
-        self.update_sample_params(model.name, draws=5000, tune=2000, target_accept=0.9)
+        self.update_sample_params(model.name, tune=3000, target_accept=0.9)
         return model
 
     def get_model_7(self, dataframe, 
                     prior_mu=(0.09, 2.5),
-                    prior_mu_diff1=(1.5, 2.5),  # Difference between orthogonal projection block 1 and 3 to block 2.
-                    prior_mu_diff2=(1.5, 2.5),  # Difference between orthogonal projection block 2 to parallel 1.
+                    prior_mu_diff1=2.5,  # Difference between orthogonal projection block 1 and 3 to block 2.
+                    prior_mu_diff2=2.5,  # Difference between orthogonal projection block 2 to parallel 1.
                     prior_sigma=1.0):
         """ Compute marginal-log-likelihood of M3: Priming/Learning effect after constrained task.
         
@@ -486,13 +490,14 @@ class ModelComparison:
         with pm.Model(coords=coords) as model:
             model.name = "M7"
             blocks_idx = pm.Data('blocks_idx', block_mx.values, dims=('obs_id', 'Block'))
-            # Blocks 1 an 3 orthogonal.
-            mu_blocks13_ortho = pm.Normal('mu_blocks_1_3_orthogonal', mu=prior_mu[0], sigma=prior_mu[1])
+            # Prior blocks 1 an 3 orthogonal, non-centered.
+            z_blocks13_ortho = pm.Normal("z_blocks_1_3", mu=0, sigma=1)
+            mu_blocks13_ortho = pm.Deterministic('mu_blocks_1_3_orthogonal',
+                                                 prior_mu[0] + z_blocks13_ortho * prior_mu[1])
             # Poisitive differences. First for direction, second for block 2.
-            diff = pm.Gamma('mu_diff',
-                            mu=np.array([prior_mu_diff1[0], prior_mu_diff2[0]]),
-                            sigma=np.array([prior_mu_diff1[1], prior_mu_diff2[1]]),
-                            shape=2)
+            diff = pm.HalfNormal('mu_diff',
+                                 sigma=np.array([prior_mu_diff1, prior_mu_diff2]),
+                                 shape=2)
             
             mu_block2 = pm.Deterministic('mu_block_2', mu_blocks13_ortho + diff[0])
             mu_block1_para = pm.Deterministic('mu_block_1_parallel', mu_blocks13_ortho + diff[0] + diff[1])
@@ -510,7 +515,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
         
-        self.update_sample_params(model.name, draws=5000, tune=2000, target_accept=0.99)
+        self.update_sample_params(model.name, tune=3000, target_accept=0.9)
         return model
 
     def get_models(self, data):

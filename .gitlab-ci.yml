@@ -111,7 +111,7 @@ model_comparison:
   stage: model_comparison
   script:
     - python scripts/07-modelcomparison.py
-  timeout: 3h
+  timeout: 4h
   needs:
     - job: preprocess
       artifacts: true
@@ -130,7 +130,7 @@ hlm:
   stage: model_comparison
   script:
     - python scripts/09-hlm2.py
-  timeout: 3h
+  timeout: 2h
   needs:
     - job: preprocess
       artifacts: true
