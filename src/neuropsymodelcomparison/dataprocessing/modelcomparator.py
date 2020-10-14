@@ -229,7 +229,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
 
-        self.update_sample_params(model.name)  # defaults
+        self.update_sample_params(model.name, tune=4000, target_accept=0.95)
         return model
 
     def get_model_2(self, dataframe, prior_mu=(0.09, 2.5), prior_diff_scale=2.5, prior_sigma=1.0):
@@ -269,7 +269,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
         
-        self.update_sample_params(model.name, target_accept=0.9)
+        self.update_sample_params(model.name, tune=4000, target_accept=0.9)
         return model
 
     def get_model_3(self, dataframe, 
@@ -363,7 +363,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
 
-        self.update_sample_params(model.name, draws=2000, tune=3000, target_accept=0.8)
+        self.update_sample_params(model.name, draws=2000, tune=4000, target_accept=0.95)
         return model
 
     def get_model_5(self, dataframe, 
@@ -416,7 +416,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
         
-        self.update_sample_params(model.name, tune=3000, target_accept=0.9)
+        self.update_sample_params(model.name, tune=4000, target_accept=0.9)
         return model
     
     def get_model_6(self, dataframe, prior_mu=(0.09, 2.5), prior_diff_scale=2.5, prior_sigma=1.0):
@@ -463,7 +463,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
 
-        self.update_sample_params(model.name, tune=3000, target_accept=0.9)
+        self.update_sample_params(model.name, tune=5000, target_accept=0.95)
         return model
 
     def get_model_7(self, dataframe, 
@@ -515,7 +515,7 @@ class ModelComparison:
             projection = pm.Normal("projection", mu=theta, sigma=sigma, observed=projection_obs,
                                    dims=('obs_id', 'Direction'))
         
-        self.update_sample_params(model.name, tune=3000, target_accept=0.9)
+        self.update_sample_params(model.name, tune=4000, target_accept=0.9)
         return model
 
     def get_models(self, data):
