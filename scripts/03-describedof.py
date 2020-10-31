@@ -158,13 +158,26 @@ fig_dof_violin = plot.generate_violin_figure(df_block_stats.rename(columns={'df1
 
 # %%
 # Save descriptive statistics for onset, duration, final states.
-# Flatten multiindex for saving.
+# LaTeX
+out_file = reports_path / 'onset_table.tex'
+onset_tab = onset_stats.T.rename_axis(["Task", "DoF"]).reset_index()
+onset_tab['DoF'] = onset_tab['DoF'].str.split('_').apply(pd.Series)[0]
+onset_tab.to_latex(out_file, caption="Onset (s) of Slider Use", label="tab:onset", float_format="%.2f", index=False)
+logging.info(f"Written report to {out_file.resolve()}")
+# Flatten multiindex for saving to CSV.
 onset_stats.index.rename('statistic', inplace=True)
 onset_stats.columns = ["-".join(i) for i in onset_stats.columns.to_flat_index()]
 out_file = reports_path / 'onset_stats.csv'
 onset_stats.to_csv(out_file)
 logging.info(f"Written report to {out_file.resolve()}")
 
+# LaTeX
+out_file = reports_path / 'duration_table.tex'
+duration_tab = duration_stats.T.rename_axis(["Task", "DoF"]).reset_index()
+duration_tab['DoF'] = duration_tab['DoF'].str.split('_').apply(pd.Series)[0]
+duration_tab.to_latex(out_file, caption="Duration (s) of Slider Use", label="tab:duration", float_format="%.2f", index=False)
+logging.info(f"Written report to {out_file.resolve()}")
+# CSV
 duration_stats.index.rename('statistic', inplace=True)
 duration_stats.columns = ["-".join(i) for i in duration_stats.columns.to_flat_index()]
 out_file = reports_path / 'duration_stats.csv'
