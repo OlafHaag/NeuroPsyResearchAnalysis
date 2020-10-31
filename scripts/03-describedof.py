@@ -24,6 +24,7 @@ from neuropsymodelcomparison import plot
 
 # Default file format for figures.
 pio.kaleido.scope.default_format = "pdf"
+pio.templates.default = "plotly_white"
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
@@ -56,7 +57,8 @@ df.condition.cat.reorder_categories(condition_display_order, inplace=True)
 # %%
 fig_onset = plot.generate_violin_figure(df[['user', 'condition', 'block', 'task', 'df1_grab', 'df2_grab']]\
                                         .rename(columns={'df1_grab': 'df1', 'df2_grab': 'df2'}), 
-                                        ['df1', 'df2'], ytitle="Grab Onset (s)", legend_title="DOF", width=1000)
+                                        ['df1', 'df2'], ytitle="Grab Onset (s)", legend_title="DOF", 
+                                        width=600, height=300)
         
 
 # %%
@@ -69,7 +71,7 @@ onset_stats = df.groupby('task', sort=False)[['df1_grab', 'df2_grab']].describe(
 fig_duration = plot.generate_violin_figure(df[['user', 'condition', 'block', 'task', 'df1_duration', 'df2_duration']]\
                                            .rename(columns={'df1_duration': 'df1','df2_duration': 'df2'}),
                                            ['df1', 'df2'], ytitle='Grab Duration (s)', legend_title="DOF",
-                                           autosize=False, width=1000)
+                                           autosize=False, width=600, height=300)
 
 # %%
 duration_stats = df.groupby('task', sort=False)[['df1_duration', 'df2_duration']]\
@@ -83,7 +85,7 @@ duration_stats = df.groupby('task', sort=False)[['df1_duration', 'df2_duration']
 # The Filliben’s formula was used to estimate the theoretical quantiles for all QQ-plots.
 
 # %%
-fig_qq_dof = plot.generate_qq_plot(df, vars_=['df1', 'df2'], width=1000)
+fig_qq_dof = plot.generate_qq_plot(df, vars_=['df1', 'df2'], width=600, height=300)
 
 # %% [markdown]
 # #### Separately
@@ -108,13 +110,13 @@ plt.savefig(reports_path / 'figures/qq-plot-dof-grid.pdf')
 histograms = dict()
 
 histograms['overall_dof'] = plot.generate_histograms(df[['df1', 'df2']], x_title="Final State Values",
-                                                     legend_title="DOF", width=1000)
+                                                     legend_title="DOF", width=600, height=300)
 
 # %%
 for task, group in df.groupby('task', sort=False):
     histograms[task] = plot.generate_histograms(group[['df1', 'df2']],
                                                 x_title=f"Final State Values for Task \"{task}\"", legend_title="DOF",
-                                                width=1000, xaxis_range=[0, 100])
+                                                width=600, height=300, xaxis_range=[0, 100])
 
 # %%
 final_state_stats = df.groupby('task')[['df1', 'df2']].describe().stack(level=0).T[task_display_order]
@@ -134,7 +136,8 @@ df_block_stats[['df1 std', 'df2 std']] = df_block_stats[['df1 variance', 'df2 va
 # Convert to long format for easier plotting.
 df_block_stats_long = analysis.wide_to_long(df_block_stats, stubs=['df1', 'df2'], suffixes=['mean', 'std'], j='dof')
 fig_dof_line = plot.generate_lines_plot(df_block_stats_long, "mean", by='user', color_col='dof', errors='std',
-                                        jitter=True, category_orders={'condition': condition_display_order}, width=1000)
+                                        jitter=True, category_orders={'condition': condition_display_order},
+                                        width=600, height=300)
 
 # %% [markdown]
 # ### Across Participants
@@ -151,7 +154,8 @@ logging.info(f"Written figure to {fig_filepath.resolve()}")
 
 # %%
 fig_dof_violin = plot.generate_violin_figure(df_block_stats.rename(columns={'df1 mean': 'df1', 'df2 mean': 'df2'}), 
-                                             columns=['df1', 'df2'], ytitle='Mean', legend_title="DOF", width=1000)
+                                             columns=['df1', 'df2'], ytitle='Mean', legend_title="DOF",
+                                              width=800)
 
 # %% [markdown]
 # ## Save Reports
