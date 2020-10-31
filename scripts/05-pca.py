@@ -21,6 +21,7 @@ from neuropsymodelcomparison import plot
 
 # Default file format for figures.
 pio.kaleido.scope.default_format = "pdf"
+pio.templates.default = "plotly_white"
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
@@ -52,10 +53,9 @@ pca_results[['task', 'PC']] = pca_results[['task', 'PC']].astype('category')
 # %%
 # Get the summary.
 var_expl_summary = pca_results.groupby(['task', 'PC'])['var_expl_ratio'].agg(['mean', 'std'])
-var_expl_summary.reset_index(inplace=True)
 
 # %%
-pca_barplot = plot.generate_pca_figure(var_expl_summary, value='mean', error='std')
+pca_barplot = plot.generate_pca_figure(var_expl_summary.reset_index(), value='mean', error='std')
 
 # %% [markdown]
 # ## Differences between Principal Components and Uncontrolled Manifold
@@ -98,10 +98,18 @@ out_file = reports_path / 'pca-summary.csv'
 var_expl_summary.to_csv(out_file, index=False)
 logging.info(f"Written report to {out_file.resolve()}")
 
+out_file = reports_path / 'pca-summary.tex'
+var_expl_summary.to_latex(out_file, caption="Mean Explained Variance (%) by Principal Components",
+                          label="tab:pca", float_format="%.2f")
+
 out_file = reports_path / 'pca-ucm-angles.csv'
 # Flatten multiindex for saving.
 angle_PC1_md.to_csv(out_file, index=False)
 logging.info(f"Written report to {out_file.resolve()}")
+
+out_file = reports_path / 'pca-ucm-angles.tex'
+angle_PC1_md.to_latex(out_file, caption="Median Interior Angle (deg) between UCM and PC1", label="tab:pcaAngle",
+                      float_format="%.2f")
 
 # Save figures.
 figures_path = Path.cwd() / 'reports/figures'

@@ -25,6 +25,7 @@ from neuropsymodelcomparison import plot
 
 # Default file format for figures.
 pio.kaleido.scope.default_format = "pdf"
+pio.templates.default = "plotly_white"
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
@@ -101,7 +102,7 @@ df_counts['rating'] = df_counts['block_id'].map(blocks['rating'])
 fig_exclusions = px.bar(df_counts, x='user', y='valid trials count', color='block', barmode='group', opacity=0.9, 
                         hover_data=['condition', 'gender', 'age_group', 'gaming_exp', 'rating'],
                         labels=dict(zip(df_counts.columns, df_counts.columns.str.title())),
-                        width=1000)
+                        width=800)
 fig_exclusions.update_layout(bargap=0.3, bargroupgap=0.01)
 
 # Add threshold.

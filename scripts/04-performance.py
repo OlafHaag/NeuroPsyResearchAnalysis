@@ -25,6 +25,7 @@ from neuropsymodelcomparison import plot
 
 # Default file format for figures.
 pio.kaleido.scope.default_format = "pdf"
+pio.templates.default = "plotly_white"
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
@@ -79,7 +80,11 @@ fig_rating_by_block.update_layout(margin=plot.theme['graph_margins'], legend=leg
 # %%
 fig_rating_vs_var = px.scatter(df_block_stats, x='rating', y='sum variance', color='condition', 
                                category_orders={'condition': condition_display_order},
-                               hover_data=['user', 'block'])
+                               hover_data=['user', 'block'],
+                               labels={'sum variance': 'Sum Variance',
+                                       'block': 'Block',
+                                       'rating': 'Difficulty Rating',
+                                       'condition': 'Condition'})
 legend = go.layout.Legend(xanchor='right',
                           yanchor='top',
                           orientation='v',
@@ -138,7 +143,7 @@ fig_mean_scatter.update_layout(margin=plot.theme['graph_margins'], legend=legend
 # The Filliben’s formula was used to estimate the theoretical quantiles for all QQ-plots.
 
 # %%
-fig_qq_sum = plot.generate_qq_plot(df, vars_=['sum'], width=1000)
+fig_qq_sum = plot.generate_qq_plot(df, vars_=['sum'], width=800)
 
 # %% [markdown]
 # #### With Confidence Intervals
@@ -157,7 +162,7 @@ plt.savefig(reports_path / 'figures/qq-plot-sum_ci.pdf')
 
 # %%
 fig_hist_sum = plot.generate_histograms(df[['task', 'sum']], by='task', x_title="Final State Sum Values", 
-                                        legend_title="Block Type", width=1000)
+                                        legend_title="Block Type", width=800)
 
 # %% [markdown]
 # ### Statistics
@@ -207,7 +212,7 @@ for col in range(1, sum_stats_by_condition.index.unique(level='condition').size 
 # #### By Participant
 
 # %%
-fig_sum_by_user = plot.generate_means_figure(df_block_stats, width=1000)
+fig_sum_by_user = plot.generate_means_figure(df_block_stats, width=800)
 
 # %% [markdown]
 # ## Task Performance II: Mean final state difference
@@ -230,7 +235,7 @@ fig_target_diff_hist = plot.generate_histogram_rows(target_diff.loc[df['block']=
 fig_target_diff_violin = plot.generate_violin_figure(target_diff, ['df1', 'df2'],
                                                      "Difference to Target",
                                                      legend_title="DoF",
-                                                     width=1000)
+                                                     width=800)
 
 # %% [markdown]
 # ### Difference between degrees of freedom.
@@ -269,12 +274,25 @@ def save_report(dataframe, filename, index=True):
     dataframe.to_csv(out_file, index=index)
     logging.info(f"Written report to {out_file.resolve()}")
 
+# TeX
+out_file = reports_path / 'sum_stats_by_condition.tex'
+sum_stats_by_condition.to_latex(out_file, caption="Performance Variable: Sum of Degrees of Freedom",
+                                label="tab:sumcond", float_format="%.2f")
+out_file = reports_path / 'dof_difference.tex'
+dof_diff.to_latex(out_file, caption="Performance Variable: Difference between Degrees of Freedom", label="tab:diffdof",
+                  float_format="%.2f", columns=['mean', 'std'])                                
+out_file = reports_path / 'dof_tost.tex'
+dof_tost.to_latex(out_file, caption="Performance Variable: Equivalence Test", label="tab:tost", float_format="%.4f")
+target_diff_stats = target_diff.groupby(['condition', 'block'], observed=True).agg(['mean', 'std'])
+out_file = reports_path / 'dof_diff_goal2.tex'
+target_diff_stats.to_latex(out_file, caption="Performance Variable: Difference from Target", label="tab:difftarget",
+                           float_format="%.2f")
+#CSV
 save_report(sum_stats_by_condition.reset_index(), 'sum_stats_by_condition.csv', index=False)
 save_report(sumvar_rating_levene, 'sumvar_rating_levene.csv')
 save_report(dof_diff.reset_index(), 'dof_difference.csv', index=False)
 save_report(dof_tost.reset_index(), 'dof_tost.csv', index=False)
 
-target_diff_stats = target_diff.groupby(['condition', 'block'], observed=True).agg(['mean', 'std'])
 target_diff_stats.columns = [' '.join(c).strip() for c in target_diff_stats.columns]
 target_diff_stats.reset_index(inplace=True)
 save_report(target_diff_stats, 'dof_diff_goal2.csv', index=False)
@@ -296,7 +314,7 @@ save_fig(fig_mean_scatter, 'scatter-sum_mean.pdf')
 save_fig(fig_qq_sum, 'qq-plot-sum.pdf')
 # Histogram
 save_fig(fig_hist_sum, 'histogram-sum.pdf')
-save_fig(fig_target_diff_hist, 'histogram-sum.pdf')
+save_fig(fig_target_diff_hist, 'histogram-target_diff.pdf')
 # Violin
 save_fig(fig_target_diff_violin, 'violin-target_diff.pdf')
 # Barplots
