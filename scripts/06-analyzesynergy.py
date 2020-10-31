@@ -26,6 +26,7 @@ sns.set(style="darkgrid")
 
 # Default file format for plotly figures.
 pio.kaleido.scope.default_format = "pdf"
+pio.templates.default = "plotly_white"
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
@@ -57,7 +58,7 @@ df.condition.cat.reorder_categories(condition_display_order, inplace=True)
 # %%
 df_long = analysis.wide_to_long(df, ['parallel', 'orthogonal'], suffixes='variance', j='projection')
 fig_proj_line = plot.generate_lines_plot(df_long, "variance", by='user', color_col='projection',
-                                         category_orders={'condition': condition_display_order}, width=1000)
+                                         category_orders={'condition': condition_display_order}, width=800)
 
 # %% [markdown]
 # ### Across participants
@@ -79,7 +80,7 @@ logging.info(f"Written figure to {fig_filepath.resolve()}")
 # %%
 fig_proj_violin = plot.generate_violin_figure(
                         df.rename(columns={'parallel variance': 'parallel', 'orthogonal variance': 'orthogonal'}),
-                        columns=['parallel', 'orthogonal'], ytitle='Variance', legend_title="PROJECTION", width=1000
+                        columns=['parallel', 'orthogonal'], ytitle='Variance', legend_title="PROJECTION", width=800
                                              )
 
 # %% [markdown]
@@ -174,9 +175,17 @@ out_file = reports_path / 'normality-test-dVz.csv'
 norm_dVz.to_csv(out_file)
 logging.info(f"Written report to {out_file.resolve()}")
 
+out_file = reports_path / 'normality-test-dVz.tex'
+norm_dVz.to_latex(out_file, caption="Normality Tests for Synergy Index", label="tab:dVzNorm",
+                  float_format="%.2f")
+
 out_file = reports_path / 'anova-dVz.csv'
 anova_dVz.to_csv(out_file, index=False)
 logging.info(f"Written report to {out_file.resolve()}")
+
+#out_file = reports_path / 'anova-dVz.tex'
+anova_dVz.to_latex(out_file, caption="Repeated Measures ANOVA on Synergy Index", label="tab:dVzAOV", float_format="%.2f",
+                  index=False)
 
 out_file = reports_path / 'posthoc-dVz.csv'
 posthoc_comparisons.to_csv(out_file, index=False)
