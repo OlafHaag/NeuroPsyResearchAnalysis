@@ -59,7 +59,8 @@ pca_barplot = plot.generate_pca_figure(var_expl_summary.reset_index(), value='me
 
 # %% [markdown]
 # ## Differences between Principal Components and Uncontrolled Manifold
-# We measure the differences between the directions of the principal components and the vectors parallel and orthogonal to the UCM in degrees.
+# We measure the differences between the directions of the principal components and the vectors parallel and orthogonal 
+# to the UCM in degrees.
 
 # %%
 ucm_vec = analysis.get_ucm_vec()
@@ -70,11 +71,14 @@ angle_df['user'] = pca_results['user']
 angle_PC1_md = angle_df.loc[angle_df['PC']==1].groupby('task').agg('median')
 
 # %%
-fig_angles = px.histogram(angle_df.loc[angle_df['PC']==1, ['task', 'parallel']], barmode='overlay', nbins=20, histnorm='percent', facet_row='task', opacity=0.7, height=600, labels={'task': "Task"})
+fig_angles = px.histogram(angle_df.loc[angle_df['PC']==1, ['task', 'parallel']], barmode='overlay', nbins=20,
+                          histnorm='percent', facet_row='task', opacity=0.7, height=600, labels={'task': "Task"})
 fig_angles.update_yaxes(hoverformat='.2f', title="")
-fig_angles.update_layout(showlegend=False, margin=plot.theme['graph_margins'], xaxis_title="Interior Angle between PC1 and UCM (degrees)", # keep the original annotations and add a list of new annotations:
-                      annotations = list(fig_angles.layout.annotations) + 
-                      [go.layout.Annotation(x=-0.07,
+fig_angles.update_layout(showlegend=False, margin=plot.theme['graph_margins'],
+                         xaxis_title="Interior Angle between PC1 and UCM (degrees)",
+                         # keep the original annotations and add a list of new annotations:
+                         annotations = list(fig_angles.layout.annotations) + 
+                         [go.layout.Annotation(x=-0.07,
                                             y=0.5,
                                             font=dict(
                                                 size=14
@@ -99,7 +103,7 @@ var_expl_summary.to_csv(out_file, index=False)
 logging.info(f"Written report to {out_file.resolve()}")
 
 out_file = reports_path / 'pca-summary.tex'
-var_expl_summary.to_latex(out_file, caption="Mean Explained Variance (%) by Principal Components",
+var_expl_summary.to_latex(out_file, caption="Mean Explained Variance (\%) by Principal Components",
                           label="tab:pca", float_format="%.2f")
 
 out_file = reports_path / 'pca-ucm-angles.csv'
