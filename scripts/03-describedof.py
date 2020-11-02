@@ -187,8 +187,14 @@ duration_stats.columns = ["-".join(i) for i in duration_stats.columns.to_flat_in
 out_file = reports_path / 'duration_stats.csv'
 duration_stats.to_csv(out_file)
 logging.info(f"Written report to {out_file.resolve()}")
-
-final_state_stats = df.groupby('task')[['df1', 'df2', 'sum']].describe().stack(level=0).T[task_display_order]  
+# TeX
+final_state_stats = df.groupby('task')[['df1', 'df2', 'sum']].describe().stack(level=0).sort_index()
+out_file = reports_path / 'final_state_stats.tex'
+final_state_stats.to_latex(out_file, columns=['mean', 'std'], caption="Descriptive Statistics of Final States",
+                           label="tab:FinalStates", float_format="%.2f")
+logging.info(f"Written report to {out_file.resolve()}")
+# CSV
+final_state_stats = final_state_stats.T[task_display_order]
 final_state_stats.index.rename('statistic', inplace=True)
 final_state_stats.columns = ["-".join(i) for i in final_state_stats.columns.to_flat_index()]
 out_file = reports_path / 'final_state_stats.csv'
