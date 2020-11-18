@@ -104,7 +104,7 @@ logging.info(f"Written report to {out_file.resolve()}")
 
 out_file = reports_path / 'pca-summary.tex'
 var_expl_summary.to_latex(out_file, caption="Mean Explained Variance (\%) by Principal Components",
-                          label="tab:pca", float_format="%.2f")
+                          label="tab:PCA", float_format="%.2f")
 
 out_file = reports_path / 'pca-ucm-angles.csv'
 # Flatten multiindex for saving.
@@ -112,7 +112,7 @@ angle_PC1_md.to_csv(out_file, index=False)
 logging.info(f"Written report to {out_file.resolve()}")
 
 out_file = reports_path / 'pca-ucm-angles.tex'
-angle_PC1_md.to_latex(out_file, caption="Median Interior Angle (deg) between UCM and PC1", label="tab:pcaAngle",
+angle_PC1_md.to_latex(out_file, caption="Median Interior Angle (deg) between UCM and PC1", label="tab:PCAAngle",
                       float_format="%.2f")
 
 # Save figures.

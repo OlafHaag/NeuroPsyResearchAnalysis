@@ -277,15 +277,15 @@ def save_report(dataframe, filename, index=True):
 # TeX
 out_file = reports_path / 'sum_stats_by_condition.tex'
 sum_stats_by_condition.to_latex(out_file, caption="Performance Variable: Sum of Degrees of Freedom",
-                                label="tab:sumcond", float_format="%.2f")
+                                label="tab:SumCond", float_format="%.2f")
 out_file = reports_path / 'dof_difference.tex'
-dof_diff.to_latex(out_file, caption="Performance Variable: Difference between Degrees of Freedom", label="tab:diffdof",
+dof_diff.to_latex(out_file, caption="Performance Variable: Difference between Degrees of Freedom", label="tab:DiffDoF",
                   float_format="%.2f", columns=['mean', 'std'])                                
 out_file = reports_path / 'dof_tost.tex'
-dof_tost.to_latex(out_file, caption="Performance Variable: Equivalence Test", label="tab:tost", float_format="%.4f")
+dof_tost.to_latex(out_file, caption="Performance Variable: Equivalence Test", label="tab:TOST", float_format="%.4f")
 target_diff_stats = target_diff.groupby(['condition', 'block'], observed=True).agg(['mean', 'std'])
 out_file = reports_path / 'dof_diff_goal2.tex'
-target_diff_stats.to_latex(out_file, caption="Performance Variable: Difference from Target", label="tab:difftarget",
+target_diff_stats.to_latex(out_file, caption="Performance Variable: Difference from Target", label="tab:DiffTarget",
                            float_format="%.2f")
 #CSV
 save_report(sum_stats_by_condition.reset_index(), 'sum_stats_by_condition.csv', index=False)

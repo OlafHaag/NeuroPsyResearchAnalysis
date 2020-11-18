@@ -118,9 +118,6 @@ for task, group in df.groupby('task', sort=False):
                                                 x_title=f"Final State Values for Task \"{task}\"", legend_title="DOF",
                                                 width=600, height=300, xaxis_range=[0, 100])
 
-# %%
-final_state_stats = df.groupby('task')[['df1', 'df2']].describe().stack(level=0).T[task_display_order]
-
 # %% [markdown]
 # The solution to the treatment tasks is that both degrees of freedom are at 62.5.
 # 
@@ -166,7 +163,7 @@ fig_dof_violin = plot.generate_violin_figure(df_block_stats.rename(columns={'df1
 out_file = reports_path / 'onset_table.tex'
 onset_tab = onset_stats.T.rename_axis(["Task", "DoF"]).reset_index()
 onset_tab['DoF'] = onset_tab['DoF'].str.split('_').apply(pd.Series)[0]
-onset_tab.to_latex(out_file, caption="Onset (s) of Slider Use", label="tab:onset", float_format="%.2f", index=False)
+onset_tab.to_latex(out_file, caption="Onset (s) of Slider Use", label="tab:Onset", float_format="%.2f", index=False)
 logging.info(f"Written report to {out_file.resolve()}")
 # Flatten multiindex for saving to CSV.
 onset_stats.index.rename('statistic', inplace=True)
@@ -179,7 +176,8 @@ logging.info(f"Written report to {out_file.resolve()}")
 out_file = reports_path / 'duration_table.tex'
 duration_tab = duration_stats.T.rename_axis(["Task", "DoF"]).reset_index()
 duration_tab['DoF'] = duration_tab['DoF'].str.split('_').apply(pd.Series)[0]
-duration_tab.to_latex(out_file, caption="Duration (s) of Slider Use", label="tab:duration", float_format="%.2f", index=False)
+duration_tab.to_latex(out_file, caption="Duration (s) of Slider Use", label="tab:Duration", float_format="%.2f",
+                      index=False)
 logging.info(f"Written report to {out_file.resolve()}")
 # CSV
 duration_stats.index.rename('statistic', inplace=True)
@@ -188,15 +186,17 @@ out_file = reports_path / 'duration_stats.csv'
 duration_stats.to_csv(out_file)
 logging.info(f"Written report to {out_file.resolve()}")
 # TeX
+final_state_stats = df.groupby(['user', 'task'], observed=True)[['df1', 'df2','sum']]\
+                      .agg(['mean', 'std'])\
+                      .groupby(['task']).mean().swaplevel(axis='columns').sort_index(axis=1).sort_index(axis=0)\
+                      .rename(columns={'mean': 'Mean', 'std': 'Std', 'sum': 'Sum'}).rename_axis('Task')
 final_state_stats = df.groupby('task')[['df1', 'df2', 'sum']].describe().stack(level=0).sort_index()
 out_file = reports_path / 'final_state_stats.tex'
 final_state_stats.to_latex(out_file, columns=['mean', 'std'], caption="Descriptive Statistics of Final States",
                            label="tab:FinalStates", float_format="%.2f")
 logging.info(f"Written report to {out_file.resolve()}")
 # CSV
-final_state_stats = final_state_stats.T[task_display_order]
-final_state_stats.index.rename('statistic', inplace=True)
-final_state_stats.columns = ["-".join(i) for i in final_state_stats.columns.to_flat_index()]
+final_state_stats = final_state_stats.T.rename_axis(("statistic", "dof"))
 out_file = reports_path / 'final_state_stats.csv'
 final_state_stats.to_csv(out_file)
 logging.info(f"Written report to {out_file.resolve()}")
