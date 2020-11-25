@@ -204,8 +204,11 @@ final_state_stats.to_latex(out_file, caption="Descriptive Statistics of Final St
                            label="tab:FinalStates", float_format="%.2f")
 logging.info(f"Written report to {out_file.resolve()}")
 # CSV
-final_state_stats = df.groupby('task')[['df1', 'df2', 'sum']].describe().stack(level=0).sort_index()
-final_state_stats = final_state_stats.T.rename_axis(("statistic", "dof"))
+final_state_stats = df.groupby('task')[['df1', 'df2', 'sum']].describe()\
+                                                             .stack(level=0)\
+                                                             .sort_index()\
+                                                             .rename_axis(columns="statistic",
+                                                                          index=("task", "variable"))
 out_file = reports_path / 'final_state_stats.csv'
 final_state_stats.to_csv(out_file)
 logging.info(f"Written report to {out_file.resolve()}")
