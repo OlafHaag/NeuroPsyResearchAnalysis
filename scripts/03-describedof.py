@@ -200,7 +200,7 @@ logging.info(f"Written report to {out_file.resolve()}")
 
 # TeX
 out_file = reports_path / 'final_state_stats.tex'
-final_state_stats.to_latex(out_file, columns=['mean', 'std'], caption="Descriptive Statistics of Final States",
+final_state_stats.to_latex(out_file, caption="Descriptive Statistics of Final States",
                            label="tab:FinalStates", float_format="%.2f")
 logging.info(f"Written report to {out_file.resolve()}")
 # CSV
