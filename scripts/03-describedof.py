@@ -118,6 +118,18 @@ for task, group in df.groupby('task', sort=False):
                                                 x_title=f"Final State Values for Task \"{task}\"", legend_title="DOF",
                                                 width=600, height=300, xaxis_range=[0, 100])
 
+# %%
+# ### Bar-plot
+final_state_stats = df.groupby(['user', 'task'], observed=True)[['df1', 'df2','sum']]\
+                      .agg(['mean', 'std'])\
+                      .groupby(['task']).mean().swaplevel(axis='columns').sort_index(axis=1).sort_index(axis=0)\
+                      .rename(columns={'mean': 'Mean', 'std': 'Std', 'sum': 'Sum'}).rename_axis('Task')
+fig_dof_bar = px.bar(final_state_stats.drop('Sum', level=1, axis=1)\
+                                      .stack(level=1)\
+                                      .reset_index()\
+                                      .rename(columns={'level_1': 'DoF'}),
+                     x='Task', y='Mean', error_y='Std', barmode='group', color='DoF', color_discrete_map=plot.theme)
+
 # %% [markdown]
 # The solution to the treatment tasks is that both degrees of freedom are at 62.5.
 # 
@@ -185,24 +197,21 @@ duration_stats.columns = ["-".join(i) for i in duration_stats.columns.to_flat_in
 out_file = reports_path / 'duration_stats.csv'
 duration_stats.to_csv(out_file)
 logging.info(f"Written report to {out_file.resolve()}")
+
 # TeX
-final_state_stats = df.groupby(['user', 'task'], observed=True)[['df1', 'df2','sum']]\
-                      .agg(['mean', 'std'])\
-                      .groupby(['task']).mean().swaplevel(axis='columns').sort_index(axis=1).sort_index(axis=0)\
-                      .rename(columns={'mean': 'Mean', 'std': 'Std', 'sum': 'Sum'}).rename_axis('Task')
-final_state_stats = df.groupby('task')[['df1', 'df2', 'sum']].describe().stack(level=0).sort_index()
 out_file = reports_path / 'final_state_stats.tex'
 final_state_stats.to_latex(out_file, columns=['mean', 'std'], caption="Descriptive Statistics of Final States",
                            label="tab:FinalStates", float_format="%.2f")
 logging.info(f"Written report to {out_file.resolve()}")
 # CSV
+final_state_stats = df.groupby('task')[['df1', 'df2', 'sum']].describe().stack(level=0).sort_index()
 final_state_stats = final_state_stats.T.rename_axis(("statistic", "dof"))
 out_file = reports_path / 'final_state_stats.csv'
 final_state_stats.to_csv(out_file)
 logging.info(f"Written report to {out_file.resolve()}")
 
 # Save figures.
-# Violin plots.
+# Violin-Plots.
 fig_filepath = figures_path / 'violin-dof_onset.pdf'
 fig_onset.write_image(str(fig_filepath))
 logging.info(f"Written figure to {fig_filepath.resolve()}")
@@ -229,4 +238,7 @@ for hist_name, fig in histograms.items():
     fig.write_image(str(fig_filepath))
     logging.info(f"Written figure to {fig_filepath.resolve()}")
 
-
+# Bar-Plots
+fig_filepath = figures_path / 'barplot-dof_mean.pdf'
+fig_dof_bar.write_image(str(fig_filepath))
+logging.info(f"Written figure to {fig_filepath.resolve()}")
